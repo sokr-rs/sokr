@@ -50,9 +50,9 @@ Thank you for your interest in contributing to SOKR. This document outlines the 
 
 ## DCO Sign-Off Requirement
 
-**Every commit must include a DCO (Developer Certificate of Origin) sign-off.**
+**External contributors must include a DCO (Developer Certificate of Origin) sign-off on every commit.**
 
-This certifies that you have the right to submit the code under the project's license. The sign-off is a simple line at the end of your commit message:
+The maintainer may bypass this requirement for administrative commits. This certifies that you have the right to submit the code under the project's license. The sign-off is a simple line at the end of your commit message:
 
 ```
 Signed-off-by: Your Name <your.email@example.com>
