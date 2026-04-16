@@ -26,11 +26,11 @@ and hardware that does not yet exist.
 - [x] 🔴 GitHub org claimed: `sokr-rs`
 - [ ] 🔴 GitHub repo made public with README, ARCHITECTURE, TODO
   - [x] Push all foundation files to `sokr-rs/sokr`
-  - [ ] Verify `README.md` renders correctly on GitHub
-  - [ ] Verify `ARCHITECTURE.md` renders correctly on GitHub
-  - [ ] Verify `TODO.md` renders correctly on GitHub
-  - [ ] Change visibility: Settings → Change repository visibility → Public
-- [ ] 🔴 CONTRIBUTING.md — contribution guidelines, DCO sign-off requirement
+  - [x] Verify `README.md` renders correctly on GitHub
+  - [x] Verify `ARCHITECTURE.md` renders correctly on GitHub
+  - [x] Verify `TODO.md` renders correctly on GitHub
+  - [x] Change visibility: Settings → Change repository visibility → Public
+- [x] 🔴 CONTRIBUTING.md — contribution guidelines, DCO sign-off requirement
   - [x] Write contributor onboarding section — how to set up local dev environment
   - [x] Write DCO sign-off requirement — every commit must carry `Signed-off-by:`
   - [x] Write plugin contribution path — no RFC required for plugins
