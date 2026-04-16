@@ -70,7 +70,7 @@ and hardware that does not yet exist.
 - [ ] 🟡 Plugin interface RFC — open for community comment before v0.2.0 freeze
   - [x] Write RFC document in `docs/rfc/0001-plugin-interface.md`
   - [ ] Open GitHub Discussion linking to RFC
-  - [ ] Set comment period: minimum 2 weeks before freeze
+  - [ ] Set comment period: minimum 4 weeks before freeze
   - [ ] Incorporate feedback or document rationale for rejection
 
 ### 0.3 Tooling

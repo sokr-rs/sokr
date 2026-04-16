@@ -61,6 +61,26 @@ hardware model, not about language, not about security policy.
 
 ---
 
+## How SOKR Differs
+
+Every existing approach solves part of the problem:
+
+| Project | Language | `no_std` | C ABI Plugin | QPU/Neuro/Photonic | Sovereign |
+|---|---|---|---|---|---|
+| CUDA | C/C++ | ❌ | ❌ | ❌ GPU only | ❌ NVIDIA |
+| CubeCL | Rust | ⚠️ partial | ❌ | ❌ GPU only | ✅ |
+| wgpu | Rust | ⚠️ partial | ❌ | ❌ GPU only | ✅ |
+| CUDA-Q | C++/Python | ❌ | ❌ | ✅ QPU | ❌ NVIDIA |
+| NIR | Python | ❌ | ❌ | ✅ Neuromorphic | ✅ |
+| hetGPU | Research | ❌ | ❌ | ❌ GPU only | ✅ |
+| **SOKR** | **Rust** | **✅** | **✅** | **✅** | **✅** |
+
+SOKR is the only runtime that satisfies all four simultaneously:
+a sovereign, `no_std` Rust core with a stable C ABI plugin contract
+that makes no assumption about the substrate model.
+
+---
+
 ## Target Substrates
 
 Current and future:

@@ -1,204 +1,256 @@
-# RFC 0001: Plugin Interface Specification
+# RFC 0001: Plugin Interface
 
-> Status: **Draft**  
-> Target Version: 0.2.0  
-> Comment Period: 14 days from publication
+**Status:** Open for comment (4 week period)
+**Opened:** 2026-04-16
+**Closes:** 2026-05-14 (4 weeks)
+**Tracking:** https://github.com/sokr-rs/sokr/discussions/2
 
 ---
 
 ## Summary
 
-This RFC specifies the SOKR plugin interface — the contract between the immutable core and swappable substrate plugins. The goal is to stabilize the C ABI surface for Phase 1 (v0.2.0) implementation.
+This RFC defines the core C ABI plugin interface for SOKR — the
+Capability, Dispatch, and Completion contract that all substrate
+plugins must implement, plus the version handshake protocol.
 
 ---
 
 ## Motivation
 
-SOKR's core value proposition is substrate independence. For this to work, the plugin interface must be:
-
-1. **Stable** — once released, breaking changes require major version bump
-2. **Minimal** — only three operations cross the boundary
-3. **Safe** — no undefined behavior from valid plugin code
-4. **Testable** — plugins can be validated without real hardware
-
----
-
-## Detailed Design
-
-### 1. VTable Registration
-
-Plugins register via a VTable struct passed to the core:
-
-```rust
-#[repr(C)]
-pub struct SokrSubstratePlugin {
-    pub version: SokrVersion,
-    pub capability_fn: SokrCapabilityFn,
-    pub dispatch_fn: SokrDispatchFn,
-    pub completion_fn: SokrCompletionFn,
-    pub destroy_fn: SokrDestroyFn,
-    _padding: [u8; 16],
-}
-```
-
-**Invariants:**
-- All function pointers must be non-null
-- `version` must pass `check_compatible()` against core version
-- `destroy_fn` is only called after all operations complete
-
-### 2. Capability Query
-
-The core asks: "Can this substrate fulfill this computation?"
-
-```rust
-pub type SokrCapabilityFn = extern "C" fn(
-    version: *const SokrVersion,
-    query: *const SokrCapabilityQuery,
-    response: *mut SokrCapabilityResponse,
-) -> SokrResult;
-```
-
-**Contract:**
-- `version` is the core's version for handshake
-- Plugin returns `Ok` if capable, `CapabilityDenied` if not
-- Plugin may return `VersionMismatch` for incompatible ABI
-- `estimated_latency_ns` is advisory; 0 means "unknown"
-
-### 3. Dispatch
-
-The core says: "Fulfill this computation."
-
-```rust
-pub type SokrDispatchFn = extern "C" fn(
-    request: *const SokrDispatchRequest,
-    response: *mut SokrDispatchResponse,
-) -> SokrResult;
-```
-
-**Contract:**
-- Must return immediately with a completion token (async model)
-- Synchronous substrates should still return token, then immediately complete
-- Token must be unique per dispatch within substrate
-- `DispatchFailed` for runtime errors (OOM, device lost, etc.)
-
-### 4. Completion
-
-The core asks: "What is the status of this dispatch?"
-
-```rust
-pub type SokrCompletionFn = extern "C" fn(
-    query: *const SokrCompletionQuery,
-    signal: *mut SokrCompletionSignal,
-) -> SokrResult;
-```
-
-**Contract:**
-- May be called multiple times per token
-- Returns `Pending` until work is done
-- Returns `Complete` or `Failed` once, then token is invalid
-- `TimedOut` if query timeout expires before completion
-
-### 5. Cleanup
-
-```rust
-pub type SokrDestroyFn = extern "C" fn();
-```
-
-**Contract:**
-- Called exactly once per plugin
-- Only called after all dispatches complete
-- Plugin releases all resources
+SOKR's core philosophy is: immutable sovereign core, everything else
+a plugin. The plugin interface is the contract that makes this possible.
+Getting it right before any code is written is more important than any
+other decision in Phase 0 — a wrong interface here costs every plugin
+author a breaking change at v0.2.x.
 
 ---
 
-## Thread Safety
+## The Interface
 
-All functions must be thread-safe:
+### Three Functions
 
-| Function | Concurrent Calls | Notes |
-|----------|-----------------|-------|
-| `capability_fn` | ✅ Yes | Synchronize internal state access |
-| `dispatch_fn` | ✅ Yes | Each call gets new token |
-| `completion_fn` | ✅ Yes | Multiple queries per token allowed |
-| `destroy_fn` | ❌ No | Only after all operations complete |
+Every substrate plugin implements exactly three functions:
+
+```c
+// Can this substrate fulfill this computation?
+SokrResult sokr_capability(
+    const SokrCapabilityQuery* query,
+    SokrCapabilityResponse*    response
+);
+
+// Fulfill it.
+SokrResult sokr_dispatch(
+    const SokrDispatchRequest* request,
+    SokrDispatchResponse*      response
+);
+
+// Signal when fulfilled.
+SokrResult sokr_completion(
+    const SokrCompletionQuery*  query,
+    SokrCompletionSignal*       signal
+);
+```
+
+Plus one lifecycle function:
+
+```c
+// Called by core when plugin is deregistered.
+void sokr_destroy(void);
+```
+
+### Type Definitions
+
+```c
+typedef struct {
+    uint32_t major;
+    uint32_t minor;
+    uint32_t patch;
+} SokrVersion;
+
+typedef enum {
+    SOKR_OK                    = 0,
+    SOKR_CAPABILITY_DENIED     = 1,
+    SOKR_DISPATCH_FAILED       = 2,
+    SOKR_TIMEOUT               = 3,
+    SOKR_VERSION_MISMATCH      = 4,
+    SOKR_NO_CAPABLE_SUBSTRATE  = 5,
+    SOKR_INVALID_INPUT         = 6,
+    SOKR_INVALID_IR            = 7,
+    SOKR_NOT_FOUND             = 8,
+    SOKR_REGISTRY_FULL         = 9,
+} SokrResult;
+
+typedef struct {
+    uint8_t  bytes[16];           // opaque 128-bit ID
+} SokrComputationId;
+
+typedef struct {
+    SokrComputationId  computation_id;
+    uint32_t           ir_format;     // IR format identifier
+    const uint8_t*     ir_data;       // pointer to IR bytes
+    size_t             ir_data_len;   // length of IR bytes
+} SokrCapabilityQuery;
+
+typedef struct {
+    SokrResult  result;
+    uint32_t    substrate_id;
+    uint64_t    estimated_latency_ns;
+} SokrCapabilityResponse;
+
+typedef struct {
+    SokrComputationId  computation_id;
+    uint32_t           substrate_id;
+    const uint8_t*     ir_data;
+    size_t             ir_data_len;
+    const uint8_t*     params;        // optional dispatch parameters
+    size_t             params_len;
+} SokrDispatchRequest;
+
+typedef uint64_t SokrCompletionToken;  // opaque handle
+
+typedef struct {
+    SokrResult           result;
+    SokrCompletionToken  completion_token;
+} SokrDispatchResponse;
+
+typedef struct {
+    SokrCompletionToken  completion_token;
+    uint64_t             timeout_ns;   // 0 = non-blocking poll
+} SokrCompletionQuery;
+
+typedef enum {
+    SOKR_COMPLETION_PENDING  = 0,
+    SOKR_COMPLETION_COMPLETE = 1,
+    SOKR_COMPLETION_FAILED   = 2,
+    SOKR_COMPLETION_TIMEDOUT = 3,
+} SokrCompletionSignal;
+
+typedef struct {
+    SokrVersion   version;
+    SokrResult  (*capability_fn)(const SokrCapabilityQuery*, SokrCapabilityResponse*);
+    SokrResult  (*dispatch_fn)(const SokrDispatchRequest*, SokrDispatchResponse*);
+    SokrResult  (*completion_fn)(const SokrCompletionQuery*, SokrCompletionSignal*);
+    void        (*destroy_fn)(void);
+} SokrSubstratePlugin;
+```
+
+### IR Format Identifiers
+
+IR format is a `uint32_t` magic number declared by the IR plugin:
+
+| IR | Identifier |
+|---|---|
+| SPIR-V | `0x53505256` |
+| PTX (NVIDIA) | `0x50545800` |
+| OpenQASM 3 | `0x4F51334D` |
+| Spike graph | `0x53504B45` |
+| Optical circuit | `0x4F50544C` |
+| SOKR-native (future) | TBD |
 
 ---
 
-## Error Handling
+## Version Handshake Protocol
 
-Plugins must handle all error cases gracefully:
+### Compatibility Rules
 
-| Error | When Returned | Recovery |
-|-------|--------------|----------|
-| `Ok` | Success | Proceed |
-| `CapabilityDenied` | Substrate cannot fulfill | Try another substrate |
-| `DispatchFailed` | Runtime failure | Retry or escalate |
-| `Timeout` | Operation timed out | Retry with longer timeout |
-| `VersionMismatch` | Incompatible ABI | Plugin incompatible |
-| `InvalidInput` | Null pointer or bad alignment | Bug in caller |
-| `InvalidIR` | IR format rejected | Try different IR plugin |
+- `major` must match exactly — different majors are incompatible
+- Plugin `minor` must be ≤ core `minor` — older plugins run on newer core
+- Plugin `minor` > core `minor` — newer plugin on older core is accepted
+  (forward compatibility: core ignores fields it does not understand)
+- `patch` is irrelevant to compatibility
+
+### Negotiation Sequence
+
+1. Core calls `plugin.version_fn()` during registration
+2. Plugin returns its compiled-in `SokrVersion`
+3. Core compares against `SokrVersion::current()`
+4. Incompatible → `SOKR_VERSION_MISMATCH` returned, plugin not registered
+5. Compatible → plugin assigned a `substrate_id`, registration succeeds
+
+### Version Bump Triggers
+
+| Change | Version bump |
+|---|---|
+| Add a field to any ABI struct | `minor` |
+| Remove or reorder a field | `major` |
+| Add a new `SokrResult` variant | `minor` |
+| Change function signature | `major` |
+| Bug fix with no ABI change | `patch` |
 
 ---
 
-## Version Handshake
+## Ownership Semantics
 
-Detailed version compatibility is documented in `SokrVersion::check_compatible()`.
-Key points:
+- All pointers in query/request structs are **borrowed** — the plugin
+  must not free them and must not retain them after the function returns
+- All pointers in response structs are **owned by the caller** — the
+  caller allocates, the plugin writes into them
+- `SokrCompletionToken` is owned by the caller — the plugin must not
+  free it; the core manages token lifetime
+- `destroy_fn` is called exactly once, by the core, on deregistration
 
-- Major versions must match exactly
-- Plugin minor ≤ Core minor
-- Patch is informational only
-- Incompatible plugins return `VersionMismatch`, never panic
+## Thread Safety Contract
 
----
-
-## Drawbacks
-
-1. **C ABI constraints** — No rich types, manual memory layout management
-2. **No async/await** — Manual polling via completion queries
-3. **Function pointer overhead** — Small but measurable vs direct calls
-4. **Plugin complexity** — Substrate authors must implement all four functions
+- `sokr_capability()` — safe to call concurrently from multiple threads
+- `sokr_dispatch()` — safe to call concurrently from multiple threads
+- `sokr_completion()` — safe to call concurrently from multiple threads
+- `sokr_register_substrate()` — NOT thread-safe, call from one thread only
+- `sokr_deregister_substrate()` — NOT thread-safe, call from one thread only
 
 ---
 
 ## Alternatives Considered
 
-### Dynamic Linking with dlopen
-- Rejected: Requires OS support, conflicts with `no_std` goals
+### Four functions instead of three
+Adding a `sokr_cancel()` function was considered. Rejected: cancellation
+semantics differ too much across substrates (QPU jobs cannot be cancelled
+once submitted). Cancellation is a dispatch policy concern, not a core
+concern. A plugin can expose cancellation through the `params` field of
+`SokrDispatchRequest` if needed.
 
-### COM-style Interface Query
-- Rejected: Adds complexity for marginal benefit; three functions is minimal
+### Single `sokr_execute()` combining all three
+Rejected: conflates synchronous and asynchronous substrates. A
+photonic substrate may have seconds of latency. A CPU substrate is
+immediate. Separating dispatch from completion allows the caller to
+do other work between them.
 
-### Pure Rust Traits
-- Rejected: Limits plugin authors to Rust; C ABI enables any language
-
----
-
-## Unresolved Questions
-
-1. Should `capability_fn` include a "warmup" hint for JIT compilation?
-2. Should we add a "batch dispatch" API for submitting multiple computations atomically?
-3. How should plugins report progress for long-running computations?
-
----
-
-## Implementation Timeline
-
-| Phase | Target | Deliverable |
-|-------|--------|-------------|
-| RFC Comment | Now | This document |
-| Freeze Decision | +14 days | Accept/modify/reject |
-| Implementation | 0.2.0 | Working CPU plugin |
-| Stabilization | 0.3.0 | No changes unless bugfix |
+### Rust trait instead of C ABI
+Rejected: would limit plugins to Rust. The sovereignty principle
+requires any language to implement a plugin without depending on the
+Rust toolchain.
 
 ---
 
-## Comment Period
+## Open Questions
 
-Please leave feedback as comments on this GitHub Discussion:
-- **Link**: TBD (will be created when merged)
-- **Duration**: 14 days
-- **Requested input**: Thread safety edge cases, error code coverage, naming
+These are the questions we are asking the community to address during
+the comment period. Every question will be resolved with either a spec
+change or a documented rationale for keeping the current design.
+
+1. Is `uint64_t` sufficient for `SokrCompletionToken` or should it be
+   128 bits to reduce collision probability in long-running systems?
+
+2. Should `estimated_latency_ns` in `SokrCapabilityResponse` be
+   mandatory or optional (zero = unknown)?
+
+3. Should `params` in `SokrDispatchRequest` have a defined schema, or
+   remain fully opaque bytes defined by the substrate plugin?
+
+4. Is the thread safety contract sufficient, or do we need a reader-writer
+   lock model for the plugin registry?
+
+5. Should `sokr_list_substrates()` be part of the core ABI or a
+   separate introspection plugin?
+
+---
+
+## Decision Log
+
+*This section is populated as feedback is received and decisions are made.*
+
+| Date | Question | Decision | Rationale |
+|---|---|---|---|
+| — | — | — | — |
 
 ---
 
