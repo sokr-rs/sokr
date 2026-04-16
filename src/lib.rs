@@ -24,6 +24,60 @@ use core::ffi::{c_void, c_char};
 // C ABI Surface Specification
 // ============================================================================
 
+/// ## Thread Safety Contract
+///
+/// All SOKR C ABI functions are **thread-safe** and may be called concurrently
+/// from any thread. Implementations must provide their own synchronization:
+///
+/// | Function | Thread Safety Requirement |
+/// |----------|---------------------------|
+/// | `capability_fn` | Must be safe to call concurrently. Substrate implementation must synchronize internal state access. |
+/// | `dispatch_fn` | Must be safe to call concurrently. May be called while other dispatches are in-flight. |
+/// | `completion_fn` | Must be safe to call concurrently from any thread. Must not block indefinitely. |
+/// | `destroy_fn` | **Must only be called once**, after all other operations have completed. Caller must ensure no concurrent calls are in-flight. |
+///
+/// ### Concurrency Guarantees
+///
+/// - The core may call `capability_fn` concurrently from multiple threads
+/// - The core may call `dispatch_fn` while `completion_fn` is being called for other tokens
+/// - The core guarantees `destroy_fn` is only called after all pending operations complete
+/// - Plugin implementations must not assume any particular calling thread
+///
+/// ## Ownership Semantics
+///
+/// ### Pointer Fields
+///
+/// All pointer fields in query/request structs follow these rules:
+///
+/// | Field | Ownership | Validity | Null Allowed |
+/// |-------|-----------|----------|--------------|
+/// | `ir_format` | Borrowed by callee | Valid for duration of call | No - must point to null-terminated C string |
+/// | `ir_data_ptr` | Borrowed by callee | Valid for duration of call | Yes - if `ir_data_len` is 0 |
+/// | `params_ptr` | Borrowed by callee | Valid for duration of call | Yes - if `params_len` is 0 |
+/// | `response` | Borrowed by callee for write | Valid, non-null, properly aligned | No - must be valid writable pointer |
+/// | `signal` | Borrowed by callee for write | Valid, non-null, properly aligned | No - must be valid writable pointer |
+///
+/// ### Allocation Contract
+///
+/// - **Core allocates**: Query/request structs on stack before calling plugin
+/// - **Plugin writes**: Response data to provided output pointers
+/// - **No heap allocation in core**: The core never allocates heap memory for plugin use
+/// - **Plugin manages its own heap**: Substrate plugins may allocate internally, but must not expose allocation details through ABI
+/// - **No transfer of ownership**: Pointers in structs are always borrowed, never transferred
+///
+/// ### Lifetime Rules
+///
+/// 1. Input pointers are valid only for the duration of the function call
+/// 2. Output pointers must remain valid until the function returns
+/// 3. The plugin must not retain references to input data after returning
+/// 4. The core must not modify data through input pointers after calling
+///
+/// ### Error Handling
+///
+/// - All functions return `SokrResult` - check this before reading output values
+/// - Output struct contents are undefined if result is not `Ok`
+/// - `InvalidInput` is returned for null required pointers or invalid alignment
+
 /// Version handshake struct for plugin compatibility negotiation.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

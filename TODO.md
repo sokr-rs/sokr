@@ -59,8 +59,8 @@ and hardware that does not yet exist.
   - [x] Define `SokrSubstratePlugin` vtable — `{ version, capability_fn, dispatch_fn, completion_fn, destroy_fn }`
   - [x] Write `#[repr(C)]` and padding rules for all structs
   - [x] Write null pointer handling rules — all pointer fields documented
-  - [ ] Write thread safety contract — which functions are safe to call concurrently
-  - [ ] Write ownership semantics — who allocates, who frees, for each field
+  - [x] Write thread safety contract — which functions are safe to call concurrently
+  - [x] Write ownership semantics — who allocates, who frees, for each field
 - [ ] 🔴 Version handshake protocol — specification for plugin compatibility negotiation
   - [ ] Define compatibility rules — `major` must match, plugin `minor` must be ≤ core `minor`
   - [ ] Define negotiation sequence — core sends version, plugin responds with its version
