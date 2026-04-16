@@ -25,7 +25,19 @@ and hardware that does not yet exist.
 - [x] 🔴 Crate reserved on crates.io (`v0.1.0`)
 - [x] 🔴 GitHub org claimed: `sokr-rs`
 - [ ] 🔴 GitHub repo made public with README, ARCHITECTURE, TODO
+  - [ ] Push all foundation files to `sokr-rs/sokr`
+  - [ ] Verify `README.md` renders correctly on GitHub
+  - [ ] Verify `ARCHITECTURE.md` renders correctly on GitHub
+  - [ ] Verify `TODO.md` renders correctly on GitHub
+  - [ ] Change visibility: Settings → Change repository visibility → Public
 - [ ] 🔴 CONTRIBUTING.md — contribution guidelines, DCO sign-off requirement
+  - [ ] Write contributor onboarding section — how to set up local dev environment
+  - [ ] Write DCO sign-off requirement — every commit must carry `Signed-off-by:`
+  - [ ] Write plugin contribution path — no RFC required for plugins
+  - [ ] Write core ABI change path — RFC required, community comment period
+  - [ ] Write code style section — `rustfmt`, `clippy` must pass before PR
+  - [ ] Write commit message convention — conventional commits format
+  - [ ] Write copyright assignment clause — all contributions to The SOKR Project
 
 ### 0.2 Design Documents
 - [x] 🔴 Core philosophy documented
@@ -34,58 +46,261 @@ and hardware that does not yet exist.
 - [x] 🔴 IR hybrid strategy documented
 - [x] 🔴 Architecture layering documented
 - [ ] 🔴 C ABI surface specification — formal definition of types and function signatures
+  - [ ] Define `SokrVersion` struct — `{ major: u32, minor: u32, patch: u32 }`
+  - [ ] Define `SokrResult` enum — `Ok`, `CapabilityDenied`, `DispatchFailed`, `Timeout`, `VersionMismatch`, `NoCapableSubstrate`, `InvalidInput`, `InvalidIR`, `NotFound`, `RegistryFull`
+  - [ ] Define `SokrComputationId` — opaque 128-bit identifier for a computation unit
+  - [ ] Define `SokrCapabilityQuery` struct — `{ computation_id, ir_format, ir_data_ptr, ir_data_len }`
+  - [ ] Define `SokrCapabilityResponse` struct — `{ result, substrate_id, estimated_latency_ns }`
+  - [ ] Define `SokrDispatchRequest` struct — `{ computation_id, substrate_id, ir_data_ptr, ir_data_len, params_ptr, params_len }`
+  - [ ] Define `SokrDispatchResponse` struct — `{ result, completion_token }`
+  - [ ] Define `SokrCompletionToken` — opaque 64-bit handle
+  - [ ] Define `SokrCompletionQuery` struct — `{ completion_token, timeout_ns }`
+  - [ ] Define `SokrCompletionSignal` enum — `Pending`, `Complete`, `Failed`, `TimedOut`
+  - [ ] Define `SokrSubstratePlugin` vtable — `{ version, capability_fn, dispatch_fn, completion_fn, destroy_fn }`
+  - [ ] Write `#[repr(C)]` and padding rules for all structs
+  - [ ] Write null pointer handling rules — all pointer fields documented
+  - [ ] Write thread safety contract — which functions are safe to call concurrently
+  - [ ] Write ownership semantics — who allocates, who frees, for each field
 - [ ] 🔴 Version handshake protocol — specification for plugin compatibility negotiation
+  - [ ] Define compatibility rules — `major` must match, plugin `minor` must be ≤ core `minor`
+  - [ ] Define negotiation sequence — core sends version, plugin responds with its version
+  - [ ] Define rejection behaviour — incompatible plugin returns `VersionMismatch`, never panics
+  - [ ] Define forward compatibility contract — newer plugin on older core behaviour
+  - [ ] Document version bump triggers — what constitutes a major vs minor vs patch change
 - [ ] 🟡 Plugin interface RFC — open for community comment before v0.2.0 freeze
+  - [ ] Write RFC document in `docs/rfc/0001-plugin-interface.md`
+  - [ ] Open GitHub Discussion linking to RFC
+  - [ ] Set comment period: minimum 2 weeks before freeze
+  - [ ] Incorporate feedback or document rationale for rejection
 
 ### 0.3 Tooling
 - [ ] 🔴 `cargo install cargo-audit` — security audit in CI
-- [ ] 🔴 GitHub Actions CI — `cargo check`, `cargo test`, `cargo clippy`, `cargo fmt`
-- [ ] 🔴 `.github/ISSUE_TEMPLATE/` — bug report, feature request, plugin proposal templates
+  - [ ] Add `cargo audit` step to CI workflow
+  - [ ] Add `audit.toml` — ignore list for known false positives
+  - [ ] Set audit to fail on any `unmaintained` or `vulnerability` advisory
+- [ ] 🔴 GitHub Actions CI
+  - [ ] Create `.github/workflows/ci.yml`
+    - [ ] Trigger: `push` to `main`, all `pull_request` events
+    - [ ] Job: `check` — `cargo check --all-targets`
+    - [ ] Job: `test` — `cargo test --all-features`
+    - [ ] Job: `clippy` — `cargo clippy -- -D warnings`
+    - [ ] Job: `fmt` — `cargo fmt --check`
+    - [ ] Job: `audit` — `cargo audit`
+    - [ ] Job: `no_std` — build with `--target thumbv7m-none-eabi`
+    - [ ] Matrix: test on `stable`, `beta`, `nightly`
+    - [ ] Cache: `~/.cargo/registry`, `~/.cargo/git`, `target/`
+  - [ ] Add CI status badge to `README.md`
+- [ ] 🔴 `.github/ISSUE_TEMPLATE/`
+  - [ ] `bug_report.md` — reproduction steps, expected vs actual, SOKR version, OS, hardware
+  - [ ] `feature_request.md` — problem statement, proposed solution, alternatives considered
+  - [ ] `plugin_proposal.md` — substrate/IR/binding name, target hardware, maintainer commitment
+  - [ ] `config.yml` — disable blank issues, link to Discussions for questions
 - [ ] 🟡 `deny.toml` — license and dependency policy via `cargo-deny`
+  - [ ] Install `cargo-deny` in CI
+  - [ ] Configure `[licenses]` — allow: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib
+  - [ ] Configure `[bans]` — deny duplicate versions of critical crates
+  - [ ] Configure `[advisories]` — deny yanked crates
+  - [ ] Configure `[sources]` — only crates.io, deny git dependencies in core
 - [ ] 🟡 Dependabot configuration
+  - [ ] Create `.github/dependabot.yml`
+  - [ ] Configure `cargo` ecosystem — weekly updates
+  - [ ] Configure `github-actions` ecosystem — weekly updates
+  - [ ] Set PR limit: max 5 open Dependabot PRs at once
 
 ---
 
 ## Phase 1 — Core Skeleton `v0.2.0`
 > The immutable core exists. One substrate works. Nothing is final.
 
-### 1.1 Core ABI
-- [ ] 🔴 Define `SokrVersion` — version handshake struct (`major`, `minor`, `patch`)
-- [ ] 🔴 Define `SokrCapabilityQuery` — computation descriptor struct, C-compatible
-- [ ] 🔴 Define `SokrDispatchRequest` — dispatch payload struct, C-compatible
-- [ ] 🔴 Define `SokrCompletionSignal` — completion enum, C-compatible
-- [ ] 🔴 Define `SokrSubstratePlugin` — vtable struct: three function pointers + version
-- [ ] 🔴 `sokr_capability()` — C ABI function, routes to substrate plugin
-- [ ] 🔴 `sokr_dispatch()` — C ABI function, routes to substrate plugin
-- [ ] 🔴 `sokr_completion()` — C ABI function, routes to substrate plugin
-- [ ] 🔴 `cbindgen` configuration — generate `sokr.h` from Rust types
-- [ ] 🔴 `no_std` enforcement — `#![no_std]` with `#![forbid(unsafe_code)]` in core
+### 1.1 Workspace Setup
+- [ ] 🔴 Initialize Cargo workspace at repo root
+  - [ ] Create root `Cargo.toml` with `[workspace]` members list
+  - [ ] Add `resolver = "2"`
+  - [ ] Add `[workspace.dependencies]` — pin shared dependency versions
+  - [ ] Add `[workspace.lints]` — shared clippy and rustc lint config
+  - [ ] Verify `cargo check --workspace` passes clean
+- [ ] 🔴 Workspace crate layout
+  - [ ] `crates/sokr-core/` — the immutable C ABI core
+  - [ ] `crates/sokr-cpu/` — CPU substrate plugin
+  - [ ] `crates/sokr-dispatch-first/` — first-capable dispatch policy
+  - [ ] `examples/` — integration examples
+  - [ ] `benches/` — benchmark harness
+  - [ ] `docs/` — specs, RFCs, design notes
 
-### 1.2 Plugin Registry
-- [ ] 🔴 Plugin registration API — register a substrate plugin at runtime
-- [ ] 🔴 Plugin deregistration API — remove a substrate plugin cleanly
-- [ ] 🔴 Plugin version negotiation — reject incompatible plugin versions at load time
-- [ ] 🟡 Plugin registry introspection — list registered plugins and their capabilities
+### 1.2 Core ABI (`sokr-core`)
+- [ ] 🔴 Scaffold `crates/sokr-core/`
+  - [ ] `Cargo.toml` — `no_std`, no dependencies, `crate-type = ["staticlib", "cdylib"]`
+  - [ ] `src/lib.rs` — `#![no_std]`, `#![forbid(unsafe_code)]` outside FFI boundary
+  - [ ] `src/types.rs` — all C ABI struct and enum definitions
+  - [ ] `src/registry.rs` — plugin registry implementation
+  - [ ] `src/ffi.rs` — `#[no_mangle] extern "C"` function exports
+  - [ ] `cbindgen.toml` — configuration for header generation
+- [ ] 🔴 Implement `SokrVersion`
+  - [ ] Define `#[repr(C)] struct SokrVersion { major: u32, minor: u32, patch: u32 }`
+  - [ ] Implement `SokrVersion::current()` — returns compiled-in version
+  - [ ] Implement `SokrVersion::is_compatible_with()` — compatibility check logic
+  - [ ] Unit test: compatible versions pass
+  - [ ] Unit test: major mismatch fails
+  - [ ] Unit test: minor forward compatibility passes
+  - [ ] Unit test: patch difference does not affect compatibility
+- [ ] 🔴 Implement `SokrResult`
+  - [ ] Define `#[repr(C)] enum SokrResult` with all variants
+  - [ ] Implement `Display` for `SokrResult` — alloc-free, fixed strings
+  - [ ] Unit test: all variants round-trip through C ABI
+- [ ] 🔴 Implement `SokrCapabilityQuery` and `SokrCapabilityResponse`
+  - [ ] Define structs per ABI spec
+  - [ ] Validate pointer fields are non-null before use
+  - [ ] Unit test: null pointer returns `SokrResult::InvalidInput`
+  - [ ] Unit test: zero-length IR data returns `InvalidInput`
+- [ ] 🔴 Implement `SokrDispatchRequest` and `SokrDispatchResponse`
+  - [ ] Define structs per ABI spec
+  - [ ] Define `SokrCompletionToken` — opaque 64-bit handle
+  - [ ] Unit test: dispatch request round-trips through registry
+- [ ] 🔴 Implement `SokrCompletionQuery` and `SokrCompletionSignal`
+  - [ ] Define structs per ABI spec
+  - [ ] Implement timeout logic — `timeout_ns = 0` means non-blocking poll
+  - [ ] Unit test: completion signal all variants represented
+- [ ] 🔴 Implement `SokrSubstratePlugin` vtable
+  - [ ] Define `#[repr(C)] struct SokrSubstratePlugin` with function pointers
+  - [ ] Validate all function pointers non-null at registration
+  - [ ] Unit test: null vtable entry rejected at registration
+- [ ] 🔴 Implement `sokr_capability()`
+  - [ ] `#[no_mangle] pub extern "C" fn sokr_capability()`
+  - [ ] Route to registered substrate plugin matching `substrate_id`
+  - [ ] Return `CapabilityDenied` if no matching substrate registered
+  - [ ] Unit test: routes to correct plugin
+  - [ ] Unit test: unknown substrate returns `CapabilityDenied`
+- [ ] 🔴 Implement `sokr_dispatch()`
+  - [ ] `#[no_mangle] pub extern "C" fn sokr_dispatch()`
+  - [ ] Validate all dispatch request fields before routing
+  - [ ] Route to substrate plugin
+  - [ ] Return `completion_token` on success
+  - [ ] Unit test: dispatch to registered plugin succeeds
+  - [ ] Unit test: dispatch to unregistered plugin fails explicitly
+- [ ] 🔴 Implement `sokr_completion()`
+  - [ ] `#[no_mangle] pub extern "C" fn sokr_completion()`
+  - [ ] Look up completion token in active dispatch table
+  - [ ] Return `Pending`, `Complete`, or `Failed`
+  - [ ] Unit test: completion after dispatch returns `Complete`
+  - [ ] Unit test: unknown token returns `Failed`
+- [ ] 🔴 `cbindgen` header generation
+  - [ ] Configure `cbindgen.toml` — language: C, style: C, include guards
+  - [ ] Add `cargo xtask generate-headers` command
+  - [ ] Verify `sokr.h` compiles cleanly with `gcc -Wall -Wextra`
+  - [ ] Verify `sokr.h` compiles cleanly with `clang -Wall -Wextra`
+  - [ ] Commit generated `include/sokr.h` to repo
+- [ ] 🔴 `no_std` enforcement
+  - [ ] Add `#![no_std]` to `sokr-core/src/lib.rs`
+  - [ ] Add CI job: build with `--target thumbv7m-none-eabi`
+  - [ ] Verify no `std` sneaks in via transitive dependency
 
-### 1.3 CPU Substrate Plugin (`sokr-cpu`)
-- [ ] 🔴 Scaffold `sokr-cpu` crate in workspace
-- [ ] 🔴 Implement `Capability` — always returns capable for any computation
-- [ ] 🔴 Implement `Dispatch` — naive CPU thread execution
-- [ ] 🔴 Implement `Completion` — synchronous, immediate
-- [ ] 🔴 Integration test — round-trip: register → capability → dispatch → completion
-- [ ] 🟡 Benchmark baseline — CPU fallback performance reference
+### 1.3 Plugin Registry
+- [ ] 🔴 Plugin registration API
+  - [ ] `sokr_register_substrate(plugin: *const SokrSubstratePlugin) -> SokrResult`
+  - [ ] Validate plugin version compatibility on registration
+  - [ ] Assign unique `substrate_id` to each registered plugin
+  - [ ] Store in fixed-size static array — no heap allocation in core
+  - [ ] Unit test: register one plugin succeeds, returns assigned id
+  - [ ] Unit test: register beyond capacity returns `RegistryFull`
+  - [ ] Unit test: register incompatible version returns `VersionMismatch`
+  - [ ] Unit test: register with null pointer returns `InvalidInput`
+- [ ] 🔴 Plugin deregistration API
+  - [ ] `sokr_deregister_substrate(substrate_id: u32) -> SokrResult`
+  - [ ] Call plugin's `destroy_fn` before removal
+  - [ ] Mark slot as available for reuse
+  - [ ] Unit test: deregister existing plugin succeeds
+  - [ ] Unit test: deregister unknown id returns `NotFound`
+  - [ ] Unit test: deregister then re-register in same slot works
+- [ ] 🔴 Plugin version negotiation
+  - [ ] Call `plugin.version_fn()` during registration
+  - [ ] Compare against `SokrVersion::current()`
+  - [ ] Reject if `major` differs
+  - [ ] Accept if plugin `minor` ≤ core `minor`
+- [ ] 🟡 Plugin registry introspection
+  - [ ] `sokr_list_substrates(out: *mut u32, capacity: usize, count: *mut usize) -> SokrResult`
+  - [ ] `sokr_describe_substrate(substrate_id: u32, out: *mut SokrSubstrateInfo) -> SokrResult`
+  - [ ] Unit test: list returns all registered substrate IDs
+  - [ ] Unit test: describe returns correct info for registered substrate
 
-### 1.4 First Dispatch Policy Plugin (`sokr-dispatch-first`)
-- [ ] 🔴 Scaffold `sokr-dispatch-first` crate
-- [ ] 🔴 Strategy: iterate registered substrates, dispatch to first capable one
-- [ ] 🔴 Fallback: if no substrate capable, return explicit error — never silent failure
+### 1.4 CPU Substrate Plugin (`sokr-cpu`)
+- [ ] 🔴 Scaffold `crates/sokr-cpu/`
+  - [ ] `Cargo.toml` — depends on `sokr-core`, `crate-type = ["staticlib", "cdylib"]`
+  - [ ] `src/lib.rs` — implements `SokrSubstratePlugin` vtable
+  - [ ] `src/capability.rs` — capability implementation
+  - [ ] `src/dispatch.rs` — dispatch implementation
+  - [ ] `src/completion.rs` — completion implementation
+- [ ] 🔴 Implement `Capability`
+  - [ ] Always return `SokrResult::Ok` — CPU can always attempt any computation
+  - [ ] Set `estimated_latency_ns` to 0 (immediate)
+  - [ ] Unit test: any query returns capable
+  - [ ] Unit test: null query pointer returns `InvalidInput`
+- [ ] 🔴 Implement `Dispatch`
+  - [ ] Accept raw byte payload as computation unit
+  - [ ] Execute synchronously on calling thread for v0.2.0
+  - [ ] Store result in completion table keyed by `completion_token`
+  - [ ] Generate unique `completion_token` per dispatch
+  - [ ] Unit test: dispatch stores result retrievable via completion
+  - [ ] Unit test: two concurrent dispatches get distinct tokens
+- [ ] 🔴 Implement `Completion`
+  - [ ] Look up `completion_token` in result table
+  - [ ] Return `Complete` immediately — synchronous dispatch
+  - [ ] Free result slot after `Complete` returned
+  - [ ] Unit test: completion returns `Complete` after dispatch
+  - [ ] Unit test: completion returns `Failed` for unknown token
+  - [ ] Unit test: double-poll after `Complete` returns `Failed` (token consumed)
+- [ ] 🔴 Integration test — full round-trip
+  - [ ] Register `sokr-cpu` plugin with core
+  - [ ] Query capability — assert `Ok`
+  - [ ] Dispatch computation — assert `Ok` with valid token
+  - [ ] Query completion — assert `Complete`
+  - [ ] Deregister plugin — assert `Ok`
+  - [ ] Verify no memory leak after deregistration
+- [ ] 🟡 Benchmark baseline
+  - [ ] Measure round-trip latency: register → capability → dispatch → completion
+  - [ ] Record as baseline in `benches/RESULTS.md`
 
-### 1.5 Tests
-- [ ] 🔴 Unit tests for version handshake — compatible, incompatible, future version
-- [ ] 🔴 Unit tests for plugin registration — register, deregister, duplicate, invalid
+### 1.5 First Dispatch Policy Plugin (`sokr-dispatch-first`)
+- [ ] 🔴 Scaffold `crates/sokr-dispatch-first/`
+  - [ ] `Cargo.toml` — depends on `sokr-core`
+  - [ ] `src/lib.rs` — dispatch policy implementation
+- [ ] 🔴 Implement first-capable strategy
+  - [ ] Iterate registered substrates in registration order
+  - [ ] Call `sokr_capability()` on each
+  - [ ] Dispatch to first substrate returning `Ok`
+  - [ ] Unit test: single substrate — dispatches to it
+  - [ ] Unit test: multiple substrates — dispatches to first capable
+  - [ ] Unit test: second substrate capable, first not — dispatches to second
+- [ ] 🔴 Explicit failure — never silent
+  - [ ] Return `SokrResult::NoCapableSubstrate` — distinct from all other errors
+  - [ ] Unit test: zero registered substrates returns `NoCapableSubstrate`
+  - [ ] Unit test: all substrates deny capability returns `NoCapableSubstrate`
+
+### 1.6 Tests
+- [ ] 🔴 Unit tests for version handshake
+  - [ ] `test_version_compatible_exact` — same version passes
+  - [ ] `test_version_compatible_minor_older_plugin` — plugin minor < core minor passes
+  - [ ] `test_version_incompatible_major_higher` — plugin major > core major fails
+  - [ ] `test_version_incompatible_major_lower` — plugin major < core major fails
+  - [ ] `test_version_compatible_future_minor` — plugin minor > core minor passes
+  - [ ] `test_version_patch_irrelevant` — patch difference does not affect compatibility
+- [ ] 🔴 Unit tests for plugin registration
+  - [ ] `test_register_valid_plugin` — succeeds, returns assigned id
+  - [ ] `test_register_null_vtable` — returns `InvalidInput`
+  - [ ] `test_register_null_function_pointer` — returns `InvalidInput`
+  - [ ] `test_register_incompatible_version` — returns `VersionMismatch`
+  - [ ] `test_register_at_capacity` — returns `RegistryFull`
+  - [ ] `test_deregister_valid` — succeeds
+  - [ ] `test_deregister_invalid_id` — returns `NotFound`
+  - [ ] `test_register_after_deregister` — slot reuse works
 - [ ] 🔴 Integration test — CPU substrate end-to-end
-- [ ] 🟡 Compile tests — confirm `no_std` enforced across all core crates
-- [ ] 🟡 Miri run — undefined behaviour check on core ABI types
+  - [ ] Full round-trip as described in 1.4
+- [ ] 🟡 Compile tests
+  - [ ] `compiletest`: `no_std` — verify core does not compile with `std`
+  - [ ] `compiletest`: unsafe — verify `#![forbid(unsafe_code)]` blocks unsafe in core
+- [ ] 🟡 Miri run
+  - [ ] Run `cargo miri test` on core ABI types
+  - [ ] Verify no undefined behaviour in pointer handling
+  - [ ] Add Miri job to CI — nightly only, allowed to fail
 
 ---
 
@@ -93,30 +308,118 @@ and hardware that does not yet exist.
 > SOKR runs real GPU workloads. The plugin model is proven.
 
 ### 2.1 SPIR-V IR Plugin (`sokr-spirv`)
-- [ ] 🔴 Scaffold `sokr-spirv` crate
-- [ ] 🔴 Accept SPIR-V binary as computation representation
-- [ ] 🔴 Validate SPIR-V at Capability query time
-- [ ] 🟡 SPIR-V reflection — extract workgroup size, bindings, entry points
+- [ ] 🔴 Scaffold `crates/sokr-spirv/`
+  - [ ] `Cargo.toml` — depends on `sokr-core`, `spirv-tools` for validation
+  - [ ] `src/lib.rs` — IR plugin implementation
+  - [ ] `src/validate.rs` — SPIR-V binary validation
+  - [ ] `src/reflect.rs` — workgroup size, binding, entry point extraction
+- [ ] 🔴 Accept SPIR-V binary
+  - [ ] Register IR format identifier: `SOKR_IR_SPIRV = 0x53505256`
+  - [ ] Validate magic number `0x07230203` at capability query time
+  - [ ] Return `SokrResult::InvalidIR` if magic number absent
+  - [ ] Unit test: valid SPIR-V binary accepted
+  - [ ] Unit test: invalid magic number rejected
+  - [ ] Unit test: empty payload rejected
+- [ ] 🔴 Validate SPIR-V at capability query time
+  - [ ] Run `spirv-val` validation pass
+  - [ ] Return `InvalidIR` with description if validation fails
+  - [ ] Unit test: valid compute shader passes validation
+  - [ ] Unit test: invalid shader returns `InvalidIR`
+- [ ] 🟡 SPIR-V reflection
+  - [ ] Extract `LocalSize` execution mode — workgroup dimensions
+  - [ ] Extract descriptor bindings — set, binding, type
+  - [ ] Extract entry point names
+  - [ ] Expose via `sokr_spirv_reflect()` C function
+  - [ ] Unit test: reflection matches known shader metadata
 
 ### 2.2 Vulkan Substrate Plugin (`sokr-vulkan`)
-- [ ] 🔴 Scaffold `sokr-vulkan` crate
-- [ ] 🔴 Implement `Capability` — query Vulkan device for compute support
-- [ ] 🔴 Implement `Dispatch` — submit SPIR-V compute shader via `ash`
-- [ ] 🔴 Implement `Completion` — Vulkan fence / semaphore signal
-- [ ] 🔴 Multi-device support — enumerate and register all available Vulkan devices
-- [ ] 🟡 Memory management — host-visible buffer allocation, staging buffers
-- [ ] 🟡 Pipeline caching — reuse compiled pipelines across dispatches
+- [ ] 🔴 Scaffold `crates/sokr-vulkan/`
+  - [ ] `Cargo.toml` — depends on `sokr-core`, `ash`, `gpu-allocator`
+  - [ ] `src/lib.rs` — substrate plugin entry point
+  - [ ] `src/device.rs` — Vulkan device enumeration and selection
+  - [ ] `src/pipeline.rs` — compute pipeline creation and caching
+  - [ ] `src/memory.rs` — buffer allocation and data transfer
+  - [ ] `src/dispatch.rs` — command buffer recording and submission
+  - [ ] `src/completion.rs` — fence and semaphore management
+- [ ] 🔴 Implement `Capability`
+  - [ ] Enumerate Vulkan physical devices via `vkEnumeratePhysicalDevices`
+  - [ ] Check `VK_QUEUE_COMPUTE_BIT` on at least one queue family
+  - [ ] Check `VkPhysicalDeviceFeatures` for required features
+  - [ ] Return `Ok` if capable, `CapabilityDenied` if not
+  - [ ] Unit test: mock device with compute queue returns capable
+  - [ ] Unit test: mock device without compute queue returns denied
+- [ ] 🔴 Implement `Dispatch`
+  - [ ] Create `VkShaderModule` from SPIR-V binary
+  - [ ] Create `VkPipelineLayout` and `VkComputePipeline`
+  - [ ] Allocate descriptor sets for input/output buffers
+  - [ ] Record `vkCmdDispatch` in command buffer
+  - [ ] Submit to compute queue
+  - [ ] Return `completion_token` mapped to submitted fence
+  - [ ] Unit test: dispatch of valid SPIR-V succeeds
+  - [ ] Unit test: dispatch of invalid SPIR-V returns `DispatchFailed`
+- [ ] 🔴 Implement `Completion`
+  - [ ] Poll `vkGetFenceStatus` for `completion_token`
+  - [ ] Respect `timeout_ns` — use `vkWaitForFences` with timeout
+  - [ ] Return `Pending`, `Complete`, or `TimedOut`
+  - [ ] Cleanup fence and pipeline after `Complete`
+  - [ ] Unit test: completion after dispatch returns `Complete`
+  - [ ] Unit test: completion with zero timeout returns `Pending` or `Complete`
+- [ ] 🔴 Multi-device support
+  - [ ] Register each physical device as separate substrate plugin instance
+  - [ ] Include device name and vendor ID in capability response
+  - [ ] Unit test: two physical devices register as two substrate IDs
+- [ ] 🟡 Memory management
+  - [ ] Host-visible staging buffer for input data upload
+  - [ ] Device-local buffer for compute
+  - [ ] Readback buffer for result download
+  - [ ] Use `gpu-allocator` for sub-allocation
+  - [ ] Unit test: data survives upload → compute → readback round-trip
+- [ ] 🟡 Pipeline caching
+  - [ ] Create `VkPipelineCache` at plugin init
+  - [ ] Reuse cached pipeline if same SPIR-V hash seen before
+  - [ ] Benchmark: pipeline cache hit vs miss latency
 
 ### 2.3 Rust Language Binding
-- [ ] 🔴 Ergonomic Rust API over the C ABI core
-- [ ] 🔴 `ComputeContext` — safe Rust wrapper for plugin registry
-- [ ] 🔴 `Kernel` — safe Rust wrapper for a dispatchable computation unit
-- [ ] 🟡 Builder pattern for dispatch configuration
+- [ ] 🔴 `ComputeContext`
+  - [ ] `pub struct ComputeContext` — safe Rust wrapper around plugin registry
+  - [ ] `ComputeContext::new()` — initialise core, register CPU fallback by default
+  - [ ] `ComputeContext::register_substrate()` — safe wrapper around `sokr_register_substrate`
+  - [ ] `ComputeContext::deregister_substrate()` — safe wrapper
+  - [ ] `impl Drop for ComputeContext` — deregister all substrates on drop
+  - [ ] Unit test: context drops cleanly with registered plugins
+  - [ ] Unit test: double-drop does not panic
+- [ ] 🔴 `Kernel`
+  - [ ] `pub struct Kernel` — wraps a computation unit (IR bytes + metadata)
+  - [ ] `Kernel::from_spirv(bytes: &[u8]) -> Result<Kernel, SokrError>`
+  - [ ] `Kernel::dispatch(&self, ctx: &ComputeContext) -> Result<CompletionHandle, SokrError>`
+  - [ ] Unit test: kernel from valid SPIR-V succeeds
+  - [ ] Unit test: kernel from invalid bytes returns error
+  - [ ] Unit test: dispatch returns valid handle
+- [ ] 🔴 `CompletionHandle`
+  - [ ] `pub struct CompletionHandle` — wraps `SokrCompletionToken`
+  - [ ] `CompletionHandle::wait(timeout: Option<Duration>) -> Result<(), SokrError>`
+  - [ ] `CompletionHandle::poll() -> CompletionStatus`
+  - [ ] Unit test: wait on CPU substrate completes immediately
+  - [ ] Unit test: poll before dispatch returns `Pending`
+- [ ] 🟡 Builder pattern
+  - [ ] `KernelBuilder` — configure workgroup size, push constants, buffer bindings
+  - [ ] `DispatchConfig` — override substrate selection, set timeout
+  - [ ] Unit test: builder produces equivalent kernel to direct construction
 
 ### 2.4 Benchmarks
-- [ ] 🔴 Benchmark harness — `criterion` based
-- [ ] 🔴 Baseline: same workload on CPU fallback vs Vulkan GPU
-- [ ] 🟡 Compare SOKR-Vulkan against raw `ash` dispatch overhead
+- [ ] 🔴 Benchmark harness setup
+  - [ ] Add `criterion` to workspace dev-dependencies
+  - [ ] Create `benches/dispatch_latency.rs`
+  - [ ] Create `benches/throughput.rs`
+  - [ ] Create `benches/RESULTS.md` — record methodology and results
+- [ ] 🔴 CPU vs Vulkan comparison
+  - [ ] Benchmark: array addition — 1M elements, CPU vs Vulkan
+  - [ ] Benchmark: matrix multiply — 512×512, CPU vs Vulkan
+  - [ ] Record baseline results in `benches/RESULTS.md`
+- [ ] 🟡 SOKR overhead vs raw dispatch
+  - [ ] Benchmark: raw `ash` Vulkan dispatch vs SOKR-Vulkan dispatch
+  - [ ] Target: SOKR overhead < 5% over raw `ash`
+  - [ ] Document methodology in `benches/RESULTS.md`
 
 ---
 
@@ -125,33 +428,100 @@ and hardware that does not yet exist.
 
 ### 3.1 CUDA Substrate Plugin (`sokr-cuda`)
 - [ ] 🟡 PTX IR plugin (`sokr-ptx`)
+  - [ ] Register IR format identifier: `SOKR_IR_PTX = 0x50545800`
+  - [ ] Validate PTX magic string `.version` at query time
+  - [ ] Unit test: valid PTX accepted, invalid rejected
 - [ ] 🟡 CUDA substrate via `cust` crate
-- [ ] 🟡 NVIDIA GPU enumeration and capability query
-- [ ] 🟡 Async dispatch and stream-based completion
+  - [ ] Scaffold `crates/sokr-cuda/`
+  - [ ] Enumerate CUDA devices via `cuDeviceGetCount`
+  - [ ] Implement `Capability` — check compute capability version
+  - [ ] Implement `Dispatch` — `cuModuleLoadData` + `cuLaunchKernel`
+  - [ ] Implement `Completion` — `cuStreamSynchronize` with timeout
+  - [ ] Unit test: PTX vector addition runs on CUDA device
+- [ ] 🟡 NVIDIA GPU enumeration
+  - [ ] Register each CUDA device as separate substrate
+  - [ ] Include device name, VRAM, compute capability in capability response
+- [ ] 🟡 Async dispatch
+  - [ ] Use CUDA streams for non-blocking dispatch
+  - [ ] Map stream event to `completion_token`
+  - [ ] Unit test: async dispatch + poll completion works
 
 ### 3.2 Metal Substrate Plugin (`sokr-metal`)
-- [ ] 🟡 Metal compute pipeline via `metal-rs`
-- [ ] 🟡 Apple Silicon unified memory path
+- [ ] 🟡 Scaffold `crates/sokr-metal/` — `cfg(target_os = "macos")` only
+  - [ ] `Cargo.toml` — depends on `metal-rs`
+  - [ ] Implement `Capability` — check Metal device supports compute
+  - [ ] Implement `Dispatch` — `MTLComputeCommandEncoder` + `MTLLibrary`
+  - [ ] Implement `Completion` — `MTLCommandBuffer` completion handler
+  - [ ] Unit test: Metal compute dispatch on Apple Silicon
+- [ ] 🟡 Unified memory path
+  - [ ] Detect Apple Silicon shared memory architecture
+  - [ ] Skip staging buffer when CPU and GPU share memory
+  - [ ] Benchmark: unified memory vs staged transfer on M-series
 
 ### 3.3 Python Bindings (`sokr-python`)
-- [ ] 🟡 PyO3 binding crate scaffold
-- [ ] 🟡 `sokr.register()`, `sokr.dispatch()`, `sokr.await_completion()`
+- [ ] 🟡 Scaffold `crates/sokr-python/`
+  - [ ] `Cargo.toml` — depends on `sokr-core`, `pyo3`, feature `extension-module`
+  - [ ] `src/lib.rs` — PyO3 module definition
+  - [ ] `src/context.rs` — Python `ComputeContext` class
+  - [ ] `src/kernel.rs` — Python `Kernel` class
+- [ ] 🟡 `sokr.register(plugin_path: str)`
+  - [ ] Load substrate plugin from shared library path
+  - [ ] Register with core
+  - [ ] Raise `SokrError` on failure
+- [ ] 🟡 `sokr.dispatch(kernel: Kernel) -> CompletionHandle`
+  - [ ] Accept `bytes` or `numpy.ndarray` as kernel payload
+  - [ ] Return Python `CompletionHandle` object
+- [ ] 🟡 `handle.wait(timeout_ms: int = 0)`
+  - [ ] Block until complete or timeout
+  - [ ] Raise `SokrTimeoutError` on timeout
 - [ ] 🟡 PyPI publish pipeline
+  - [ ] `maturin` build configuration
+  - [ ] GitHub Actions: build wheels for Linux, macOS, Windows
+  - [ ] Publish to PyPI on tag push
 
 ### 3.4 WebGPU Substrate Plugin (`sokr-webgpu`)
-- [ ] 🟡 `wgpu` backend
+- [ ] 🟡 Scaffold `crates/sokr-webgpu/` — WASM-compatible
+  - [ ] `Cargo.toml` — depends on `wgpu`
+  - [ ] Implement `Capability` — query `wgpu::Adapter` for compute support
+  - [ ] Implement `Dispatch` — `wgpu::ComputePass` submission
+  - [ ] Implement `Completion` — map `wgpu::BufferAsyncError` callback
 - [ ] 🟡 WASM compilation target
-- [ ] 🟡 `wasm-bindgen` JavaScript API
+  - [ ] Add `wasm32-unknown-unknown` to CI matrix
+  - [ ] Verify `sokr-webgpu` compiles to WASM
+  - [ ] `wasm-pack build` produces valid npm package
+- [ ] 🟡 JavaScript API via `wasm-bindgen`
+  - [ ] `sokr.init()` — async, initialises WebGPU adapter
+  - [ ] `sokr.dispatch(spirv: Uint8Array) -> Promise<Uint8Array>`
+  - [ ] Publish to npm as `@sokr/webgpu`
 
 ### 3.5 Performance Dispatch Policy (`sokr-dispatch-perf`)
-- [ ] 🟡 Per-substrate performance profile database
-- [ ] 🟡 Route based on historical dispatch latency per workload class
-- [ ] 🟡 Profile persistence across sessions
+- [ ] 🟡 Scaffold `crates/sokr-dispatch-perf/`
+- [ ] 🟡 Per-substrate latency profile
+  - [ ] Record actual dispatch + completion latency per substrate per IR format
+  - [ ] Store in fixed-size ring buffer — no heap allocation
+- [ ] 🟡 Profile-aware routing
+  - [ ] Route to substrate with lowest historical latency for this IR format
+  - [ ] Fall back to first-capable if no profile data exists
+  - [ ] Unit test: routes to faster substrate after profiling
+- [ ] 🟡 Profile persistence
+  - [ ] Serialize profiles to flat binary file
+  - [ ] Load on plugin init, save on plugin destroy
+  - [ ] Unit test: profiles survive plugin restart
 
 ### 3.6 C Headers
-- [ ] 🟡 `cbindgen` generated `sokr.h`
-- [ ] 🟡 C example: register plugin, dispatch, completion
-- [ ] 🟡 C++ example: RAII wrapper over C ABI
+- [ ] 🟡 Finalise `sokr.h`
+  - [ ] Run `cbindgen` — verify no drift from hand-spec
+  - [ ] Add doxygen-style comments to all exported types and functions
+  - [ ] Verify with `gcc -Wall -Wextra -Werror`
+  - [ ] Verify with `clang -Wall -Wextra -Werror`
+- [ ] 🟡 C example
+  - [ ] `examples/c/hello_compute.c` — register CPU plugin, dispatch, completion
+  - [ ] `examples/c/Makefile` — build with `gcc` and `clang`
+  - [ ] Add to CI: build and run C example
+- [ ] 🟡 C++ RAII wrapper
+  - [ ] `include/sokr.hpp` — `SokrContext`, `SokrKernel`, `SokrFuture` RAII classes
+  - [ ] `examples/cpp/hello_compute.cpp`
+  - [ ] Verify with C++17 and C++20
 
 ---
 
@@ -160,26 +530,65 @@ and hardware that does not yet exist.
 
 ### 4.1 QPU Substrate Plugin (`sokr-qpu`)
 - [ ] 🟢 OpenQASM 3 IR plugin (`sokr-openqasm`)
-- [ ] 🟢 IBM Quantum backend via Qiskit Runtime REST API
-- [ ] 🟢 Completion model: measurement collapse signal
-- [ ] 🟢 Capability: qubit count, circuit depth, gate set query
+  - [ ] Register IR format identifier: `SOKR_IR_OPENQASM3 = 0x4F51334D`
+  - [ ] Parse OpenQASM 3 header for version validation
+  - [ ] Unit test: valid OpenQASM 3 program accepted
+  - [ ] Unit test: OpenQASM 2 program rejected with clear error
+- [ ] 🟢 IBM Quantum backend
+  - [ ] Authenticate via Qiskit Runtime REST API
+  - [ ] Implement `Capability` — query available backends, qubit count, gate set
+  - [ ] Implement `Dispatch` — submit job via REST, return job ID as token
+  - [ ] Implement `Completion` — poll job status endpoint until terminal state
+  - [ ] Unit test: mock REST backend round-trip
+- [ ] 🟢 Capability metadata
+  - [ ] Qubit count, T1/T2 coherence times, gate error rates in capability response
+  - [ ] Unit test: capability response carries hardware metadata
 
 ### 4.2 Neuromorphic Substrate Plugin (`sokr-neuro`)
-- [ ] 🟢 Spike graph IR representation
-- [ ] 🟢 Intel Loihi backend (via LAVA framework bridge)
-- [ ] 🟢 Completion model: convergence signal
+- [ ] 🟢 Spike graph IR
+  - [ ] Define spike graph binary format — nodes, synapses, timing constraints
+  - [ ] Register IR format identifier: `SOKR_IR_SPIKE = 0x53504B45`
+  - [ ] Validator: check node count, synapse count, timing constraints
+  - [ ] Unit test: valid spike graph accepted, over-limit graph rejected
+- [ ] 🟢 Intel Loihi backend via LAVA bridge
+  - [ ] Implement `Capability` — check LAVA SDK available, Loihi device present
+  - [ ] Implement `Dispatch` — submit spike graph to LAVA runtime
+  - [ ] Implement `Completion` — convergence signal from LAVA callback
+- [ ] 🟢 Convergence completion model
+  - [ ] Define convergence criteria in capability query
+  - [ ] Support streaming partial results before full convergence
 
 ### 4.3 Photonic Substrate Plugin (`sokr-photon`)
-- [ ] 🟢 Optical circuit IR representation
-- [ ] 🟢 Lightmatter backend (pending public API)
-- [ ] 🟢 Completion model: photon detection signal
+- [ ] 🟢 Optical circuit IR
+  - [ ] Define optical circuit binary format
+  - [ ] Register IR format identifier: `SOKR_IR_OPTICAL = 0x4F50544C`
+  - [ ] Validator: check gate set compatibility with target device
+- [ ] 🟢 Lightmatter backend
+  - [ ] Pending public SDK/API availability
+  - [ ] Stub plugin with `Capability` returning `CapabilityDenied` until SDK ships
+- [ ] 🟢 Photon detection completion model
+  - [ ] Map photon measurement events to `SokrCompletionSignal`
+  - [ ] Handle probabilistic outputs — partial measurement results
 
 ### 4.4 Sovereign IR (`sokr-ir`)
-- [ ] 🟢 SOKR-native IR specification — substrate-agnostic computation graph
+- [ ] 🟢 SOKR-native IR specification
+  - [ ] Define substrate-agnostic computation graph format
+  - [ ] Version IR format independently of SOKR core
+  - [ ] Publish specification as `docs/sokr-ir-spec.md`
+  - [ ] Open spec for public comment before implementation begins
 - [ ] 🟢 Compiler: SOKR-IR → SPIR-V
+  - [ ] Graph lowering pass — computation graph to SPIR-V kernel
+  - [ ] Type mapping — SOKR-IR types to SPIR-V types
+  - [ ] Integration test: SOKR-IR program produces correct SPIR-V output
 - [ ] 🟢 Compiler: SOKR-IR → PTX
+  - [ ] Graph lowering pass — computation graph to PTX
+  - [ ] Integration test: SOKR-IR program produces correct PTX output
 - [ ] 🟢 Compiler: SOKR-IR → OpenQASM 3
+  - [ ] Map classical compute nodes to quantum gate equivalents
+  - [ ] Integration test: SOKR-IR program produces valid OpenQASM 3
 - [ ] 🟢 Compiler: SOKR-IR → spike graph
+  - [ ] Map tensor operations to spike timing encodings
+  - [ ] Integration test: SOKR-IR program produces valid spike graph
 
 ---
 
