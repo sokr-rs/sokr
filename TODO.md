@@ -61,12 +61,12 @@ and hardware that does not yet exist.
   - [x] Write null pointer handling rules — all pointer fields documented
   - [x] Write thread safety contract — which functions are safe to call concurrently
   - [x] Write ownership semantics — who allocates, who frees, for each field
-- [ ] 🔴 Version handshake protocol — specification for plugin compatibility negotiation
-  - [ ] Define compatibility rules — `major` must match, plugin `minor` must be ≤ core `minor`
-  - [ ] Define negotiation sequence — core sends version, plugin responds with its version
-  - [ ] Define rejection behaviour — incompatible plugin returns `VersionMismatch`, never panics
-  - [ ] Define forward compatibility contract — newer plugin on older core behaviour
-  - [ ] Document version bump triggers — what constitutes a major vs minor vs patch change
+- [x] 🔴 Version handshake protocol — specification for plugin compatibility negotiation
+  - [x] Define compatibility rules — `major` must match, plugin `minor` must be ≤ core `minor`
+  - [x] Define negotiation sequence — core sends version, plugin responds with its version
+  - [x] Define rejection behaviour — incompatible plugin returns `VersionMismatch`, never panics
+  - [x] Define forward compatibility contract — newer plugin on older core behaviour
+  - [x] Document version bump triggers — what constitutes a major vs minor vs patch change
 - [ ] 🟡 Plugin interface RFC — open for community comment before v0.2.0 freeze
   - [ ] Write RFC document in `docs/rfc/0001-plugin-interface.md`
   - [ ] Open GitHub Discussion linking to RFC

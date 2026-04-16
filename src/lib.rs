@@ -79,6 +79,34 @@ use core::ffi::{c_void, c_char};
 /// - `InvalidInput` is returned for null required pointers or invalid alignment
 
 /// Version handshake struct for plugin compatibility negotiation.
+///
+/// ## Version Compatibility Rules
+///
+/// | Core Version | Plugin Version | Compatible? | Reason |
+/// |--------------|----------------|-------------|--------|
+/// | 1.2.3 | 1.1.0 | ✅ Yes | Same major, plugin minor ≤ core minor |
+/// | 1.2.3 | 1.2.0 | ✅ Yes | Same major, same minor |
+/// | 1.2.3 | 1.3.0 | ❌ No | Plugin minor > core minor |
+/// | 1.2.3 | 2.0.0 | ❌ No | Major version mismatch |
+/// | 1.2.3 | 0.9.0 | ❌ No | Major version mismatch |
+///
+/// ## Negotiation Sequence
+///
+/// 1. Core sends its version pointer as first argument to `capability_fn`
+/// 2. Plugin inspects core version and determines compatibility
+/// 3. Plugin returns `VersionMismatch` if incompatible (never panics)
+/// 4. On success, plugin fills response and returns `Ok`
+///
+/// ## Forward Compatibility
+///
+/// - Newer plugin on older core: Plugin must check and return `VersionMismatch`
+/// - Older plugin on newer core: Allowed if major matches and plugin minor ≤ core minor
+///
+/// ## Version Bump Triggers
+///
+/// - **Major**: Any breaking change to C ABI (struct layout, function signatures)
+/// - **Minor**: New features, new result codes, new optional fields (backwards compatible)
+/// - **Patch**: Documentation fixes, implementation corrections (no ABI change)
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SokrVersion {
@@ -88,11 +116,31 @@ pub struct SokrVersion {
 }
 
 impl SokrVersion {
+    /// Current SOKR core ABI version (0.1.0).
     pub const CURRENT: Self = Self {
         major: 0,
         minor: 1,
         patch: 0,
     };
+
+    /// Check if this plugin version is compatible with the given core version.
+    ///
+    /// Returns `SokrResult::Ok` if compatible, `SokrResult::VersionMismatch` otherwise.
+    /// This function never panics - incompatible versions are handled gracefully.
+    ///
+    /// # Compatibility Rules
+    /// - `plugin.major` must equal `core.major`
+    /// - `plugin.minor` must be ≤ `core.minor`
+    /// - `patch` is ignored for compatibility (informational only)
+    pub fn check_compatible(self, core: SokrVersion) -> SokrResult {
+        if self.major != core.major {
+            return SokrResult::VersionMismatch;
+        }
+        if self.minor > core.minor {
+            return SokrResult::VersionMismatch;
+        }
+        SokrResult::Ok
+    }
 }
 
 /// Result codes for SOKR operations.
