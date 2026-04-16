@@ -25,19 +25,19 @@ and hardware that does not yet exist.
 - [x] 🔴 Crate reserved on crates.io (`v0.1.0`)
 - [x] 🔴 GitHub org claimed: `sokr-rs`
 - [ ] 🔴 GitHub repo made public with README, ARCHITECTURE, TODO
-  - [ ] Push all foundation files to `sokr-rs/sokr`
+  - [x] Push all foundation files to `sokr-rs/sokr`
   - [ ] Verify `README.md` renders correctly on GitHub
   - [ ] Verify `ARCHITECTURE.md` renders correctly on GitHub
   - [ ] Verify `TODO.md` renders correctly on GitHub
   - [ ] Change visibility: Settings → Change repository visibility → Public
 - [ ] 🔴 CONTRIBUTING.md — contribution guidelines, DCO sign-off requirement
-  - [ ] Write contributor onboarding section — how to set up local dev environment
-  - [ ] Write DCO sign-off requirement — every commit must carry `Signed-off-by:`
-  - [ ] Write plugin contribution path — no RFC required for plugins
-  - [ ] Write core ABI change path — RFC required, community comment period
-  - [ ] Write code style section — `rustfmt`, `clippy` must pass before PR
-  - [ ] Write commit message convention — conventional commits format
-  - [ ] Write copyright assignment clause — all contributions to The SOKR Project
+  - [x] Write contributor onboarding section — how to set up local dev environment
+  - [x] Write DCO sign-off requirement — every commit must carry `Signed-off-by:`
+  - [x] Write plugin contribution path — no RFC required for plugins
+  - [x] Write core ABI change path — RFC required, community comment period
+  - [x] Write code style section — `rustfmt`, `clippy` must pass before PR
+  - [x] Write commit message convention — conventional commits format
+  - [x] Write copyright assignment clause — all contributions to The SOKR Project
 
 ### 0.2 Design Documents
 - [x] 🔴 Core philosophy documented
