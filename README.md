@@ -2,7 +2,10 @@
 
 > Immutable sovereign core. Everything else a plugin.
 
-**This crate is in early design phase. No API is stable.**
+**Early design phase. No API is stable. No runnable code yet.**
+
+[![Crates.io](https://img.shields.io/crates/v/sokr.svg)](https://crates.io/crates/sokr)
+[![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 
 ---
 
@@ -73,10 +76,9 @@ Current and future:
 
 ## Status
 
-`v0.1.0` — name reservation. Design phase. No runnable code.
+`v0.1.0` — foundation phase. Crate reserved. Architecture and roadmap in progress.
 
-Roadmap and architecture forthcoming at:
-https://github.com/sokr-rs/sokr
+See [TODO.md](TODO.md) for the full roadmap and [ARCHITECTURE.md](ARCHITECTURE.md) for the design.
 
 ---
 
