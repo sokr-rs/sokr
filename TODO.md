@@ -68,7 +68,7 @@ and hardware that does not yet exist.
   - [x] Define forward compatibility contract — newer plugin on older core behaviour
   - [x] Document version bump triggers — what constitutes a major vs minor vs patch change
 - [ ] 🟡 Plugin interface RFC — open for community comment before v0.2.0 freeze
-  - [ ] Write RFC document in `docs/rfc/0001-plugin-interface.md`
+  - [x] Write RFC document in `docs/rfc/0001-plugin-interface.md`
   - [ ] Open GitHub Discussion linking to RFC
   - [ ] Set comment period: minimum 2 weeks before freeze
   - [ ] Incorporate feedback or document rationale for rejection
