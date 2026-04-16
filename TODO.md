@@ -45,20 +45,20 @@ and hardware that does not yet exist.
 - [x] 🔴 Plugin categories defined: IR, Substrate, Language Binding, Dispatch Policy
 - [x] 🔴 IR hybrid strategy documented
 - [x] 🔴 Architecture layering documented
-- [ ] 🔴 C ABI surface specification — formal definition of types and function signatures
-  - [ ] Define `SokrVersion` struct — `{ major: u32, minor: u32, patch: u32 }`
-  - [ ] Define `SokrResult` enum — `Ok`, `CapabilityDenied`, `DispatchFailed`, `Timeout`, `VersionMismatch`, `NoCapableSubstrate`, `InvalidInput`, `InvalidIR`, `NotFound`, `RegistryFull`
-  - [ ] Define `SokrComputationId` — opaque 128-bit identifier for a computation unit
-  - [ ] Define `SokrCapabilityQuery` struct — `{ computation_id, ir_format, ir_data_ptr, ir_data_len }`
-  - [ ] Define `SokrCapabilityResponse` struct — `{ result, substrate_id, estimated_latency_ns }`
-  - [ ] Define `SokrDispatchRequest` struct — `{ computation_id, substrate_id, ir_data_ptr, ir_data_len, params_ptr, params_len }`
-  - [ ] Define `SokrDispatchResponse` struct — `{ result, completion_token }`
-  - [ ] Define `SokrCompletionToken` — opaque 64-bit handle
-  - [ ] Define `SokrCompletionQuery` struct — `{ completion_token, timeout_ns }`
-  - [ ] Define `SokrCompletionSignal` enum — `Pending`, `Complete`, `Failed`, `TimedOut`
-  - [ ] Define `SokrSubstratePlugin` vtable — `{ version, capability_fn, dispatch_fn, completion_fn, destroy_fn }`
-  - [ ] Write `#[repr(C)]` and padding rules for all structs
-  - [ ] Write null pointer handling rules — all pointer fields documented
+- [x] 🔴 C ABI surface specification — formal definition of types and function signatures
+  - [x] Define `SokrVersion` struct — `{ major: u32, minor: u32, patch: u32 }`
+  - [x] Define `SokrResult` enum — `Ok`, `CapabilityDenied`, `DispatchFailed`, `Timeout`, `VersionMismatch`, `NoCapableSubstrate`, `InvalidInput`, `InvalidIR`, `NotFound`, `RegistryFull`
+  - [x] Define `SokrComputationId` — opaque 128-bit identifier for a computation unit
+  - [x] Define `SokrCapabilityQuery` struct — `{ computation_id, ir_format, ir_data_ptr, ir_data_len }`
+  - [x] Define `SokrCapabilityResponse` struct — `{ result, substrate_id, estimated_latency_ns }`
+  - [x] Define `SokrDispatchRequest` struct — `{ computation_id, substrate_id, ir_data_ptr, ir_data_len, params_ptr, params_len }`
+  - [x] Define `SokrDispatchResponse` struct — `{ result, completion_token }`
+  - [x] Define `SokrCompletionToken` — opaque 64-bit handle
+  - [x] Define `SokrCompletionQuery` struct — `{ completion_token, timeout_ns }`
+  - [x] Define `SokrCompletionSignal` enum — `Pending`, `Complete`, `Failed`, `TimedOut`
+  - [x] Define `SokrSubstratePlugin` vtable — `{ version, capability_fn, dispatch_fn, completion_fn, destroy_fn }`
+  - [x] Write `#[repr(C)]` and padding rules for all structs
+  - [x] Write null pointer handling rules — all pointer fields documented
   - [ ] Write thread safety contract — which functions are safe to call concurrently
   - [ ] Write ownership semantics — who allocates, who frees, for each field
 - [ ] 🔴 Version handshake protocol — specification for plugin compatibility negotiation
