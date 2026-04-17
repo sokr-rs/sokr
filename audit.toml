@@ -1,0 +1,13 @@
+# cargo-audit configuration
+# https://github.com/rustsec/rustsec/blob/main/cargo-audit/src/audit.toml.example
+
+[advisories]
+# Fail on any unmaintained or vulnerability advisory
+ignore = []
+informational_warnings = ["unmaintained", "yanked"]
+severity_threshold = "low"
+
+[output]
+deny = ["unmaintained", "vulnerability"]
+quiet = false
+show_tree = true

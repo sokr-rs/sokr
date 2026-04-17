@@ -69,24 +69,24 @@ and hardware that does not yet exist.
   - [x] Document version bump triggers — what constitutes a major vs minor vs patch change
 - [ ] 🟡 Plugin interface RFC — open for community comment before v0.2.0 freeze
   - [x] Write RFC document in `docs/rfc/0001-plugin-interface.md`
-  - [ ] Open GitHub Discussion linking to RFC
-  - [ ] Set comment period: minimum 4 weeks before freeze
+  - [x] Open GitHub Discussion linking to RFC
+  - [x] Set comment period: minimum 4 weeks before freeze
   - [ ] Incorporate feedback or document rationale for rejection
 
 ### 0.3 Tooling
-- [ ] 🔴 `cargo install cargo-audit` — security audit in CI
-  - [ ] Add `cargo audit` step to CI workflow
-  - [ ] Add `audit.toml` — ignore list for known false positives
-  - [ ] Set audit to fail on any `unmaintained` or `vulnerability` advisory
-- [ ] 🔴 GitHub Actions CI
-  - [ ] Create `.github/workflows/ci.yml`
-    - [ ] Trigger: `push` to `main`, all `pull_request` events
-    - [ ] Job: `check` — `cargo check --all-targets`
-    - [ ] Job: `test` — `cargo test --all-features`
-    - [ ] Job: `clippy` — `cargo clippy -- -D warnings`
-    - [ ] Job: `fmt` — `cargo fmt --check`
-    - [ ] Job: `audit` — `cargo audit`
-    - [ ] Job: `no_std` — build with `--target thumbv7m-none-eabi`
+- [x] 🔴 `cargo install cargo-audit` — security audit in CI
+  - [x] Add `cargo audit` step to CI workflow
+  - [x] Add `audit.toml` — ignore list for known false positives
+  - [x] Set audit to fail on any `unmaintained` or `vulnerability` advisory
+- [x] 🔴 GitHub Actions CI
+  - [x] Create `.github/workflows/ci.yml`
+    - [x] Trigger: `push` to `main`, all `pull_request` events
+    - [x] Job: `check` — `cargo check --all-targets`
+    - [x] Job: `test` — `cargo test --all-features`
+    - [x] Job: `clippy` — `cargo clippy -- -D warnings`
+    - [x] Job: `fmt` — `cargo fmt --check`
+    - [x] Job: `audit` — `cargo audit`
+    - [x] Job: `no_std` — build with `--target thumbv7m-none-eabi`
     - [ ] Matrix: test on `stable`, `beta`, `nightly`
     - [ ] Cache: `~/.cargo/registry`, `~/.cargo/git`, `target/`
   - [ ] Add CI status badge to `README.md`
