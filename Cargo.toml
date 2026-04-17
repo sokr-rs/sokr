@@ -31,8 +31,5 @@ all = "warn"
 pedantic = "warn"
 nursery = "warn"
 
-[profile.dev]
-panic = "abort"
-
 [profile.release]
 panic = "abort"

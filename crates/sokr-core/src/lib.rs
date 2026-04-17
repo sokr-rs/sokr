@@ -20,9 +20,6 @@
 
 use core::ffi::{c_char, c_void};
 
-#[cfg(not(test))]
-use core::panic::PanicInfo;
-
 // ============================================================================
 // C ABI Surface Specification
 // ============================================================================
@@ -310,17 +307,4 @@ pub struct SokrSubstratePlugin {
     /// Cleanup function called on deregistration.
     pub destroy_fn: SokrDestroyFn,
     _padding: [u8; 16],
-}
-
-// ============================================================================
-// Panic Handler (required for no_std)
-// ============================================================================
-
-/// Panic handler for `no_std` environment.
-/// In a real implementation, this would log or signal the panic appropriately.
-#[cfg(not(test))]
-#[allow(clippy::missing_const_for_fn)]
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
 }
