@@ -33,3 +33,6 @@ coverage/
 *.tmp
 .env
 *.orig
+.skill/
+.cursor/rules/skill-context.md
+.windsurf/rules/skill-context.md
