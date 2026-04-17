@@ -87,25 +87,23 @@ and hardware that does not yet exist.
     - [x] Job: `fmt` — `cargo fmt --check`
     - [x] Job: `audit` — `cargo audit`
     - [x] Job: `no_std` — build with `--target thumbv7m-none-eabi`
-    - [ ] Matrix: test on `stable`, `beta`, `nightly`
-    - [ ] Cache: `~/.cargo/registry`, `~/.cargo/git`, `target/`
-  - [ ] Add CI status badge to `README.md`
-- [ ] 🔴 `.github/ISSUE_TEMPLATE/`
-  - [ ] `bug_report.md` — reproduction steps, expected vs actual, SOKR version, OS, hardware
-  - [ ] `feature_request.md` — problem statement, proposed solution, alternatives considered
-  - [ ] `plugin_proposal.md` — substrate/IR/binding name, target hardware, maintainer commitment
-  - [ ] `config.yml` — disable blank issues, link to Discussions for questions
-- [ ] 🟡 `deny.toml` — license and dependency policy via `cargo-deny`
-  - [ ] Install `cargo-deny` in CI
-  - [ ] Configure `[licenses]` — allow: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib
-  - [ ] Configure `[bans]` — deny duplicate versions of critical crates
-  - [ ] Configure `[advisories]` — deny yanked crates
-  - [ ] Configure `[sources]` — only crates.io, deny git dependencies in core
-- [ ] 🟡 Dependabot configuration
-  - [ ] Create `.github/dependabot.yml`
-  - [ ] Configure `cargo` ecosystem — weekly updates
-  - [ ] Configure `github-actions` ecosystem — weekly updates
-  - [ ] Set PR limit: max 5 open Dependabot PRs at once
+    - [x] Matrix: test on `stable`, `beta`, `nightly`
+    - [x] Cache: `~/.cargo/registry`, `~/.cargo/git`, `target/`
+  - [x] Add CI status badge to `README.md`
+- [x] 🔴 `.github/ISSUE_TEMPLATE/`
+  - [x] `bug_report.md` — reproduction steps, expected vs actual, SOKR version, OS, hardware
+  - [x] `feature_request.md` — problem statement, proposed solution, alternatives considered
+  - [x] `plugin_proposal.md` — substrate/IR/binding name, target hardware, maintainer commitment
+  - [x] `config.yml` — disable blank issues, link to Discussions for questions
+- [x] 🟡 `deny.toml` — license and dependency policy via `cargo-deny`
+  - [x] Configure `[licenses]` — allow: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib
+  - [x] Configure `[advisories]` — deny yanked crates
+  - [x] Configure `[sources]` — only crates.io, deny git dependencies in core
+- [x] 🟡 Dependabot configuration
+  - [x] Create `.github/dependabot.yml`
+  - [x] Configure `cargo` ecosystem — weekly updates
+  - [x] Configure `github-actions` ecosystem — weekly updates
+  - [x] Set PR limit: max 5 open Dependabot PRs at once
 
 ---
 

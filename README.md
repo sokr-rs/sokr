@@ -5,6 +5,7 @@
 **Early design phase. No API is stable. No runnable code yet.**
 
 [![Crates.io](https://img.shields.io/crates/v/sokr.svg)](https://crates.io/crates/sokr)
+[![CI](https://github.com/sokr-rs/sokr/actions/workflows/ci.yml/badge.svg)](https://github.com/sokr-rs/sokr/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 
 ---

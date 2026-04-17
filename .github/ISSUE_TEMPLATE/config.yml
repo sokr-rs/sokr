@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & Discussions
+    url: https://github.com/sokr-rs/sokr/discussions
+    about: Use GitHub Discussions for questions, ideas, and general discussion
+  - name: RFC Discussion
+    url: https://github.com/sokr-rs/sokr/discussions
+    about: Comment on open RFCs
+  - name: Security Vulnerability
+    url: https://github.com/sokr-rs/sokr/security/advisories/new
+    about: Please report security vulnerabilities here
