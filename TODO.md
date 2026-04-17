@@ -111,19 +111,19 @@ and hardware that does not yet exist.
 > The immutable core exists. One substrate works. Nothing is final.
 
 ### 1.1 Workspace Setup
-- [ ] 🔴 Initialize Cargo workspace at repo root
-  - [ ] Create root `Cargo.toml` with `[workspace]` members list
-  - [ ] Add `resolver = "2"`
-  - [ ] Add `[workspace.dependencies]` — pin shared dependency versions
-  - [ ] Add `[workspace.lints]` — shared clippy and rustc lint config
-  - [ ] Verify `cargo check --workspace` passes clean
-- [ ] 🔴 Workspace crate layout
-  - [ ] `crates/sokr-core/` — the immutable C ABI core
-  - [ ] `crates/sokr-cpu/` — CPU substrate plugin
-  - [ ] `crates/sokr-dispatch-first/` — first-capable dispatch policy
-  - [ ] `examples/` — integration examples
-  - [ ] `benches/` — benchmark harness
-  - [ ] `docs/` — specs, RFCs, design notes
+- [x] 🔴 Initialize Cargo workspace at repo root
+  - [x] Create root `Cargo.toml` with `[workspace]` members list
+  - [x] Add `resolver = "2"`
+  - [x] Add `[workspace.dependencies]` — pin shared dependency versions
+  - [x] Add `[workspace.lints]` — shared clippy and rustc lint config
+  - [x] Verify `cargo check --workspace` passes clean
+- [x] 🔴 Workspace crate layout
+  - [x] `crates/sokr-core/` — the immutable C ABI core
+  - [x] `crates/sokr-cpu/` — CPU substrate plugin
+  - [x] `crates/sokr-dispatch-first/` — first-capable dispatch policy
+  - [x] `examples/` — integration examples
+  - [x] `benches/` — benchmark harness
+  - [x] `docs/` — specs, RFCs, design notes
 
 ### 1.2 Core ABI (`sokr-core`)
 - [ ] 🔴 Scaffold `crates/sokr-core/`

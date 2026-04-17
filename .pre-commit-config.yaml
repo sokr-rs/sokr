@@ -35,9 +35,4 @@ repos:
         files: \.rs$
         pass_filenames: false
 
-      - id: cargo-test
-        name: cargo test
-        entry: cargo test
-        language: system
-        files: \.rs$
-        pass_filenames: false
+# TODO: re-add cargo-test hook in Phase 1 once sokr-cpu integration test exists

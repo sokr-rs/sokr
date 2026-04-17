@@ -16,9 +16,12 @@
 //! three questions is a valid SOKR backend, including substrates that
 //! do not yet exist.
 
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 
 use core::ffi::{c_char, c_void};
+
+#[cfg(not(test))]
+use core::panic::PanicInfo;
 
 // ============================================================================
 // C ABI Surface Specification
@@ -110,8 +113,11 @@ use core::ffi::{c_char, c_void};
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SokrVersion {
+    /// Major version - must match between core and plugin.
     pub major: u32,
+    /// Minor version - plugin must be ≤ core.
     pub minor: u32,
+    /// Patch version - informational only.
     pub patch: u32,
 }
 
@@ -132,7 +138,8 @@ impl SokrVersion {
     /// - `plugin.major` must equal `core.major`
     /// - `plugin.minor` must be ≤ `core.minor`
     /// - `patch` is ignored for compatibility (informational only)
-    pub fn check_compatible(self, core: SokrVersion) -> SokrResult {
+    #[must_use]
+    pub const fn check_compatible(self, core: Self) -> SokrResult {
         if self.major != core.major {
             return SokrResult::VersionMismatch;
         }
@@ -147,15 +154,25 @@ impl SokrVersion {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SokrResult {
+    /// Operation succeeded.
     Ok = 0,
+    /// Substrate cannot fulfill this computation.
     CapabilityDenied = 1,
+    /// Dispatch failed at runtime.
     DispatchFailed = 2,
+    /// Operation timed out.
     Timeout = 3,
+    /// Plugin ABI version incompatible with core.
     VersionMismatch = 4,
+    /// No registered substrate can fulfill this computation.
     NoCapableSubstrate = 5,
+    /// Invalid input parameters.
     InvalidInput = 6,
+    /// Invalid IR format.
     InvalidIR = 7,
+    /// Resource not found.
     NotFound = 8,
+    /// Plugin registry is full.
     RegistryFull = 9,
 }
 
@@ -163,16 +180,22 @@ pub enum SokrResult {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SokrComputationId {
+    /// High 64 bits of the identifier.
     pub high: u64,
+    /// Low 64 bits of the identifier.
     pub low: u64,
 }
 
 /// Computation descriptor for capability queries.
 #[repr(C)]
 pub struct SokrCapabilityQuery {
+    /// Computation to query capability for.
     pub computation_id: SokrComputationId,
+    /// IR format identifier (null-terminated C string).
     pub ir_format: *const c_char,
+    /// Pointer to IR data.
     pub ir_data_ptr: *const c_void,
+    /// Length of IR data in bytes.
     pub ir_data_len: usize,
     _padding: [u8; 8],
 }
@@ -180,26 +203,38 @@ pub struct SokrCapabilityQuery {
 /// Response from a capability query.
 #[repr(C)]
 pub struct SokrCapabilityResponse {
+    /// Result of the capability query.
     pub result: SokrResult,
+    /// Substrate that can fulfill this computation (if capable).
     pub substrate_id: u64,
+    /// Estimated latency in nanoseconds (0 if unknown).
     pub estimated_latency_ns: u64,
 }
 
 /// Dispatch payload struct.
 #[repr(C)]
 pub struct SokrDispatchRequest {
+    /// Computation to dispatch.
     pub computation_id: SokrComputationId,
+    /// Substrate to dispatch to.
     pub substrate_id: u64,
+    /// Pointer to IR data.
     pub ir_data_ptr: *const c_void,
+    /// Length of IR data in bytes.
     pub ir_data_len: usize,
+    /// Pointer to dispatch parameters.
     pub params_ptr: *const c_void,
+    /// Length of parameters in bytes.
     pub params_len: usize,
 }
 
 /// Response from a dispatch request.
 #[repr(C)]
 pub struct SokrDispatchResponse {
+    /// Result of the dispatch request.
     pub result: SokrResult,
+    _padding: u32,
+    /// Token to query completion status.
     pub completion_token: SokrCompletionToken,
 }
 
@@ -207,13 +242,16 @@ pub struct SokrDispatchResponse {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SokrCompletionToken {
+    /// Opaque handle identifying this completion.
     pub handle: u64,
 }
 
 /// Query for completion status.
 #[repr(C)]
 pub struct SokrCompletionQuery {
+    /// Completion token to query.
     pub completion_token: SokrCompletionToken,
+    /// Timeout in nanoseconds (0 for no timeout).
     pub timeout_ns: u64,
     _padding: [u8; 8],
 }
@@ -222,9 +260,13 @@ pub struct SokrCompletionQuery {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SokrCompletionSignal {
+    /// Operation is still pending.
     Pending = 0,
+    /// Operation completed successfully.
     Complete = 1,
+    /// Operation failed.
     Failed = 2,
+    /// Operation timed out.
     TimedOut = 3,
 }
 
@@ -232,32 +274,53 @@ pub enum SokrCompletionSignal {
 // Plugin VTable
 // ============================================================================
 
-/// Function pointer types for substrate plugin operations.
+/// Capability query function pointer type.
 pub type SokrCapabilityFn = extern "C" fn(
     version: *const SokrVersion,
     query: *const SokrCapabilityQuery,
     response: *mut SokrCapabilityResponse,
 ) -> SokrResult;
 
+/// Dispatch function pointer type.
 pub type SokrDispatchFn = extern "C" fn(
     request: *const SokrDispatchRequest,
     response: *mut SokrDispatchResponse,
 ) -> SokrResult;
 
+/// Completion query function pointer type.
 pub type SokrCompletionFn = extern "C" fn(
     query: *const SokrCompletionQuery,
     signal: *mut SokrCompletionSignal,
 ) -> SokrResult;
 
+/// Cleanup function called when a plugin is deregistered.
 pub type SokrDestroyFn = extern "C" fn();
 
-/// VTable struct for substrate plugins.
+/// `VTable` struct for substrate plugins.
 #[repr(C)]
 pub struct SokrSubstratePlugin {
+    /// Plugin ABI version for compatibility check.
     pub version: SokrVersion,
+    /// Capability query function pointer.
     pub capability_fn: SokrCapabilityFn,
+    /// Dispatch function pointer.
     pub dispatch_fn: SokrDispatchFn,
+    /// Completion query function pointer.
     pub completion_fn: SokrCompletionFn,
+    /// Cleanup function called on deregistration.
     pub destroy_fn: SokrDestroyFn,
     _padding: [u8; 16],
+}
+
+// ============================================================================
+// Panic Handler (required for no_std)
+// ============================================================================
+
+/// Panic handler for `no_std` environment.
+/// In a real implementation, this would log or signal the panic appropriately.
+#[cfg(not(test))]
+#[allow(clippy::missing_const_for_fn)]
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    loop {}
 }

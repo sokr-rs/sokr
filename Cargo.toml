@@ -1,18 +1,38 @@
-[package]
-name = "sokr"
-version = "0.1.0"
+[workspace]
+members = [
+    "crates/sokr-core",
+    "crates/sokr-cpu",
+    "crates/sokr-dispatch-first",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.1"
+authors = ["The SOKR Project"]
 edition = "2021"
-description = "Sovereign Open Kernel Runtime — immutable sovereign core, everything else a plugin."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/sokr-rs/sokr"
 homepage = "https://github.com/sokr-rs/sokr"
 documentation = "https://docs.rs/sokr"
 keywords = ["compute", "runtime", "kernel", "gpu", "agnostic"]
 categories = ["hardware-support", "no-std"]
-readme = "README.md"
-exclude = [".github/", "*.md"]
+rust-version = "1.78"
 
-[lib]
-name = "sokr"
+[workspace.dependencies]
+# Core has no dependencies - keep it pure
+# Substrate plugins will add their hardware-specific deps here
 
-[dependencies]
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"
+nursery = "warn"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
