@@ -10,11 +10,11 @@ use crate::types::{SokrResult, SokrVersion};
 /// Returns the current SOKR core ABI version.
 ///
 /// # Safety
-/// The returned pointer is valid for the lifetime of the program.
+/// The returned pointer is a static reference valid for the lifetime of the program.
 /// Do not free or modify it.
 #[no_mangle]
 pub extern "C" fn sokr_version() -> *const SokrVersion {
-    &const { SokrVersion::CURRENT }
+    core::ptr::addr_of!(SokrVersion::CURRENT)
 }
 
 /// Checks if a plugin version is compatible with this core.
@@ -28,7 +28,7 @@ pub extern "C" fn sokr_version() -> *const SokrVersion {
 /// - `SokrResult::InvalidInput` if either pointer is null
 ///
 /// # Safety
-/// Both pointers must be valid, properly aligned, and non-null.
+/// Pointers must be properly aligned if non-null. Null pointers return `InvalidInput`.
 #[no_mangle]
 pub unsafe extern "C" fn sokr_check_version(
     plugin: *const SokrVersion,
@@ -39,14 +39,12 @@ pub unsafe extern "C" fn sokr_check_version(
     }
 
     let plugin_version = unsafe { *plugin };
-    let compatible = plugin_version
-        .check_compatible(SokrVersion::CURRENT)
-        .is_ok();
+    let compatibility = plugin_version.check_compatible(SokrVersion::CURRENT);
     unsafe {
-        *result = if compatible { 1 } else { 0 };
+        *result = if compatibility.is_ok() { 1 } else { 0 };
     }
 
-    SokrResult::Ok
+    compatibility
 }
 
 #[cfg(test)]
@@ -81,5 +79,18 @@ mod tests {
         let status = unsafe { sokr_check_version(&current, &mut result) };
         assert_eq!(status, SokrResult::Ok);
         assert_eq!(result, 1);
+    }
+
+    #[test]
+    fn check_version_incompatible_returns_mismatch() {
+        let newer = SokrVersion {
+            major: 99,
+            minor: 0,
+            patch: 0,
+        };
+        let mut result = 0;
+        let status = unsafe { sokr_check_version(&newer, &mut result) };
+        assert_eq!(status, SokrResult::VersionMismatch);
+        assert_eq!(result, 0);
     }
 }

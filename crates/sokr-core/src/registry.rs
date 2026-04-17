@@ -1,7 +1,9 @@
 //! Plugin registry for substrate management.
 //!
 //! The registry maintains the set of registered substrate plugins and
-//! provides lookup by substrate ID. All operations are thread-safe.
+//! provides lookup by substrate ID.
+//!
+//! **Note**: This is a placeholder implementation. Thread-safety will be added in Phase 1.3.
 
 use crate::types::{SokrResult, SokrSubstratePlugin};
 
@@ -64,8 +66,7 @@ impl Registry {
             }
         }
 
-        // Should not reach here if is_full() check is correct
-        SokrResult::RegistryFull
+        unreachable!("registry not full but no empty slot found")
     }
 
     /// Returns a reference to the substrate at the given index.
