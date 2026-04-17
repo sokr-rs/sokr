@@ -41,7 +41,14 @@ Thank you for your interest in contributing to SOKR. This document outlines the 
    cargo clippy
    ```
 
-4. **Install additional tools** (optional but recommended):
+4. **Install pre-commit** (required):
+   ```bash
+   pip install pre-commit
+   pre-commit install
+   ```
+   Pre-commit hooks run automatically on every commit. Never bypass with `--no-verify`.
+
+5. **Install additional tools** (optional but recommended):
    ```bash
    cargo install cargo-audit cargo-deny
    ```
@@ -120,6 +127,22 @@ Examples of core ABI changes:
 ## Code Style
 
 All contributions must pass the following checks:
+
+### Pre-commit Hooks
+
+Pre-commit hooks run automatically on every commit and enforce all code style requirements. Install them:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+Run manually before committing:
+```bash
+pre-commit run --all-files
+```
+
+**Never use `--no-verify` to bypass hooks.** If hooks fail, fix the issues and commit again.
 
 ### Rustfmt
 ```bash

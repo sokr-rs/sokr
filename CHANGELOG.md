@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `cargo-deny` license checking with `deny.toml`
   - Dependabot configuration for weekly updates
 - **Developer Tooling**:
-  - Pre-commit hooks with standard checks and Rust-specific validation
+  - Pre-commit hooks (trailing-whitespace, end-of-file-fixer, yaml/json/toml checks, plus Rust-specific: cargo fmt, cargo check, cargo clippy -D warnings, cargo test)
   - Issue templates (bug report, feature request, plugin proposal)
   - `.gitignore` with comprehensive patterns
 - **Legal**: Dual MIT OR Apache-2.0 licensing with proper headers

@@ -24,7 +24,7 @@ and hardware that does not yet exist.
 - [x] 🔴 Copyright holder: **The SOKR Project**
 - [x] 🔴 Crate reserved on crates.io (`v0.1.0`)
 - [x] 🔴 GitHub org claimed: `sokr-rs`
-- [ ] 🔴 GitHub repo made public with README, ARCHITECTURE, TODO
+- [x] 🔴 GitHub repo made public with README, ARCHITECTURE, TODO
   - [x] Push all foundation files to `sokr-rs/sokr`
   - [x] Verify `README.md` renders correctly on GitHub
   - [x] Verify `ARCHITECTURE.md` renders correctly on GitHub
