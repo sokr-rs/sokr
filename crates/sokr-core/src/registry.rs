@@ -1,0 +1,171 @@
+//! Plugin registry for substrate management.
+//!
+//! The registry maintains the set of registered substrate plugins and
+//! provides lookup by substrate ID. All operations are thread-safe.
+
+use crate::types::{SokrResult, SokrSubstratePlugin};
+
+/// Maximum number of substrate plugins that can be registered.
+pub const MAX_SUBSTRATES: usize = 16;
+
+/// Plugin registry for managing substrate plugins.
+///
+/// This is a placeholder implementation for Phase 1.2.
+/// Full implementation with thread-safety will be added in Phase 1.3.
+pub struct Registry {
+    /// Number of registered substrates.
+    count: usize,
+    /// Fixed-size array of substrate slots.
+    substrates: [Option<SokrSubstratePlugin>; MAX_SUBSTRATES],
+}
+
+impl Registry {
+    /// Creates a new empty registry.
+    #[must_use]
+    pub const fn new() -> Self {
+        const EMPTY: Option<SokrSubstratePlugin> = None;
+        Self {
+            count: 0,
+            substrates: [EMPTY; MAX_SUBSTRATES],
+        }
+    }
+
+    /// Returns the number of registered substrates.
+    #[must_use]
+    pub const fn len(&self) -> usize {
+        self.count
+    }
+
+    /// Returns true if no substrates are registered.
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.count == 0
+    }
+
+    /// Returns true if the registry is at capacity.
+    #[must_use]
+    pub const fn is_full(&self) -> bool {
+        self.count >= MAX_SUBSTRATES
+    }
+
+    /// Registers a substrate plugin.
+    ///
+    /// Returns `SokrResult::RegistryFull` if at capacity.
+    pub fn register(&mut self, plugin: SokrSubstratePlugin) -> SokrResult {
+        if self.is_full() {
+            return SokrResult::RegistryFull;
+        }
+
+        for slot in &mut self.substrates {
+            if slot.is_none() {
+                *slot = Some(plugin);
+                self.count += 1;
+                return SokrResult::Ok;
+            }
+        }
+
+        // Should not reach here if is_full() check is correct
+        SokrResult::RegistryFull
+    }
+
+    /// Returns a reference to the substrate at the given index.
+    #[must_use]
+    pub fn get(&self, index: usize) -> Option<&SokrSubstratePlugin> {
+        self.substrates.get(index)?.as_ref()
+    }
+
+    /// Iterates over all registered substrates.
+    pub fn iter(&self) -> impl Iterator<Item = &SokrSubstratePlugin> {
+        self.substrates.iter().filter_map(|s| s.as_ref())
+    }
+}
+
+impl Default for Registry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{SokrResult, SokrSubstratePlugin, SokrVersion};
+
+    extern "C" fn dummy_capability(
+        _version: *const crate::types::SokrVersion,
+        _query: *const crate::types::SokrCapabilityQuery,
+        _response: *mut crate::types::SokrCapabilityResponse,
+    ) -> SokrResult {
+        SokrResult::Ok
+    }
+
+    extern "C" fn dummy_dispatch(
+        _request: *const crate::types::SokrDispatchRequest,
+        _response: *mut crate::types::SokrDispatchResponse,
+    ) -> SokrResult {
+        SokrResult::Ok
+    }
+
+    extern "C" fn dummy_completion(
+        _query: *const crate::types::SokrCompletionQuery,
+        _signal: *mut crate::types::SokrCompletionSignal,
+    ) -> SokrResult {
+        SokrResult::Ok
+    }
+
+    extern "C" fn dummy_destroy() {}
+
+    fn dummy_plugin() -> SokrSubstratePlugin {
+        SokrSubstratePlugin {
+            version: SokrVersion::CURRENT,
+            capability_fn: dummy_capability,
+            dispatch_fn: dummy_dispatch,
+            completion_fn: dummy_completion,
+            destroy_fn: dummy_destroy,
+            _padding: [0; 16],
+        }
+    }
+
+    #[test]
+    fn new_registry_is_empty() {
+        let reg = Registry::new();
+        assert!(reg.is_empty());
+        assert_eq!(reg.len(), 0);
+    }
+
+    #[test]
+    fn register_increases_count() {
+        let mut reg = Registry::new();
+        let result = reg.register(dummy_plugin());
+        assert!(result.is_ok());
+        assert_eq!(reg.len(), 1);
+        assert!(!reg.is_empty());
+    }
+
+    #[test]
+    fn register_full_returns_error() {
+        let mut reg = Registry::new();
+        for _ in 0..MAX_SUBSTRATES {
+            reg.register(dummy_plugin()).unwrap();
+        }
+        assert!(reg.is_full());
+        assert!(reg.register(dummy_plugin()).is_err());
+    }
+
+    #[test]
+    fn get_returns_registered() {
+        let mut reg = Registry::new();
+        reg.register(dummy_plugin()).unwrap();
+        assert!(reg.get(0).is_some());
+        assert!(reg.get(1).is_none());
+    }
+
+    #[test]
+    fn iter_visits_all() {
+        let mut reg = Registry::new();
+        reg.register(dummy_plugin()).unwrap();
+        reg.register(dummy_plugin()).unwrap();
+        let count = reg.iter().count();
+        assert_eq!(count, 2);
+    }
+}

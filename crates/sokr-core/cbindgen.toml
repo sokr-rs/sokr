@@ -1,0 +1,38 @@
+# cbindgen configuration for SOKR C header generation
+# Run: cbindgen --crate sokr-core --output sokr.h
+
+language = "C"
+
+[parse]
+parse_deps = false
+
+[export]
+include = [
+    "SokrVersion",
+    "SokrResult",
+    "SokrComputationId",
+    "SokrCapabilityQuery",
+    "SokrCapabilityResponse",
+    "SokrDispatchRequest",
+    "SokrDispatchResponse",
+    "SokrCompletionToken",
+    "SokrCompletionQuery",
+    "SokrCompletionSignal",
+    "SokrSubstratePlugin",
+    "SokrCapabilityFn",
+    "SokrDispatchFn",
+    "SokrCompletionFn",
+    "SokrDestroyFn",
+]
+
+[fn]
+rename_types = "SnakeCase"
+
+[struct]
+rename_types = "SnakeCase"
+
+[enum]
+rename_types = "SnakeCase"
+
+[defines]
+"feature = ffi" = "SOKR_FFI_ENABLED"
