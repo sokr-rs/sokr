@@ -18,7 +18,7 @@
 
 #![no_std]
 
-use core::ffi::{c_void, c_char};
+use core::ffi::{c_char, c_void};
 
 // ============================================================================
 // C ABI Surface Specification
@@ -77,7 +77,7 @@ use core::ffi::{c_void, c_char};
 /// - All functions return `SokrResult` - check this before reading output values
 /// - Output struct contents are undefined if result is not `Ok`
 /// - `InvalidInput` is returned for null required pointers or invalid alignment
-
+///
 /// Version handshake struct for plugin compatibility negotiation.
 ///
 /// ## Version Compatibility Rules

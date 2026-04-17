@@ -47,7 +47,7 @@ High-level approach for implementing this plugin:
 
 Estimated timeline for implementation:
 - [ ] Already exists (link to repo)
-- [ ] Proof of concept: 
+- [ ] Proof of concept:
 - [ ] Production ready:
 
 ## Related Work
