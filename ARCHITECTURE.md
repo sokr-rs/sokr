@@ -15,6 +15,96 @@ can override. The core must be immune to churn at both ends.
 
 ---
 
+## Theoretical Foundations
+
+SOKR's three-function interface is grounded in well-established
+formal models, not invented from scratch.
+
+**Run-to-Completion (RTC) semantics** — the Completion signal maps
+directly to RTC: a computation runs to completion before the next
+event is accepted. The core makes no assumption about how long
+completion takes — microseconds for CPU, seconds for QPU — but the
+contract is the same.
+
+**Automata and Statecharts** — every substrate plugin is a state
+machine. The three-function interface defines the transitions:
+`Capability` (can I accept this input?), `Dispatch` (transition to
+running state), `Completion` (transition to terminal state). The core
+does not know or care what happens inside the state machine.
+
+**Capability-based security** — the plugin vtable is a capability
+token. Possessing a registered `substrate_id` is the only permission
+needed to dispatch to that substrate. No ambient authority, no global
+state, no implicit permissions. Directly informed by seL4's capability
+model and Capsicum's UNIX capability design.
+
+---
+
+## Design Lineage
+
+SOKR does not exist in a vacuum. These prior systems directly
+informed specific design decisions:
+
+**QNX** — microkernel with POSIX compatibility and capability-limited
+message passing. Lesson: keep the core minimal, make capabilities
+explicit, route everything through a defined interface. The
+three-function vtable is SOKR's message-passing contract.
+
+**seL4** — the only formally verified capability-based microkernel.
+Lesson: sovereignty claims must eventually be provable, not just
+philosophical. seL4 is the long-term target for what formal
+verification of SOKR's core ABI contract should look like.
+
+**WASI 0.1** — clean capability-based runtime before committee
+consensus introduced complexity. Lesson: the original WASI design
+was correct. WASI 0.2/WIT/IDL added schema generation and code
+generation that SOKR deliberately avoids. No IDL in SOKR core.
+
+**BEAM** — Erlang/Elixir runtime with actor model, substrate-agnostic
+by design. Lesson: processes that communicate only via defined message
+interfaces can be migrated across substrates transparently. SOKR
+applies this principle at the compute kernel level.
+
+**RP2040 PIO** — Raspberry Pi's Programmable I/O state machines,
+programmable without touching the core processor. Lesson: the minimal
+hardware dispatch model already exists in silicon — capability query
+(does this PIO program fit this state machine?), dispatch (load and
+run), completion (signal done). SOKR formalises this pattern in
+software.
+
+**CubeCL / wgpu / rust-cuda** — the current Rust GPU compute
+ecosystem. Lesson: all three assume the GPU thread/workgroup model.
+QPU, neuromorphic, and photonic compute require fundamentally
+different models. SOKR sits below these runtimes as a substrate
+plugin layer, not beside them as a competitor.
+
+---
+
+## Scope Constraint
+
+The problem space SOKR addresses is vast — automata theory, formal
+verification, neuromorphic computing, quantum information theory,
+photonic circuits. Each is a legitimate rabbit hole.
+
+SOKR avoids this by a strict rule: **the core has no opinions.**
+
+The core has no opinions about:
+- RTC vs preemptive execution
+- Memory addressing models
+- Thread/workgroup topology
+- Error propagation strategies
+- Security policy
+- IR schema design
+
+All of these are plugin concerns. The moment the core adopts an
+opinion on any of them, it gains a constraint that cannot be removed
+without a breaking change.
+
+The three-function interface is the scope boundary. Everything outside
+it is a plugin. This is not a limitation — it is the design.
+
+---
+
 ## The Problem SOKR Solves
 
 Every existing compute runtime — CUDA, ROCm, Metal, WebGPU — binds the
