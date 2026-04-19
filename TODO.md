@@ -152,10 +152,10 @@ and hardware that does not yet exist.
   - [x] Validate pointer fields are non-null before use
   - [x] Unit test: null pointer returns `SokrResult::InvalidInput`
   - [x] Unit test: zero-length IR data returns `InvalidInput`
-- [ ] 🔴 Implement `SokrDispatchRequest` and `SokrDispatchResponse`
-  - [ ] Define structs per ABI spec
-  - [ ] Define `SokrCompletionToken` — opaque 64-bit handle
-  - [ ] Unit test: dispatch request round-trips through registry
+- [x] 🔴 Implement `SokrDispatchRequest` and `SokrDispatchResponse`
+  - [x] Define structs per ABI spec
+  - [x] Define `SokrCompletionToken` — opaque 64-bit handle
+  - [x] Unit test: dispatch request round-trips through registry
 - [ ] 🔴 Implement `SokrCompletionQuery` and `SokrCompletionSignal`
   - [ ] Define structs per ABI spec
   - [ ] Implement timeout logic — `timeout_ns = 0` means non-blocking poll

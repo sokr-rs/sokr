@@ -5,7 +5,10 @@
 
 #![allow(unsafe_code)]
 
-use crate::types::{SokrCapabilityQuery, SokrCapabilityResponse, SokrResult, SokrVersion};
+use crate::types::{
+    SokrCapabilityQuery, SokrCapabilityResponse, SokrDispatchRequest, SokrDispatchResponse,
+    SokrResult, SokrVersion,
+};
 
 #[allow(missing_docs)]
 static SOKR_VERSION_STATIC: SokrVersion = SokrVersion::CURRENT;
@@ -86,6 +89,47 @@ pub unsafe extern "C" fn sokr_capability(
     let result = SokrResult::NoCapableSubstrate;
     unsafe {
         (*response).result = result;
+    }
+    result
+}
+
+/// Dispatches a computation to a substrate for execution.
+///
+/// # Arguments
+/// - `request`: Pointer to dispatch request descriptor
+/// - `response`: Pointer to store the response (contains completion token)
+///
+/// # Returns
+/// - `SokrResult::Ok` on successful dispatch
+/// - `SokrResult::InvalidInput` if either pointer is null or IR data length is zero
+///
+/// # Safety
+/// Pointers must be properly aligned if non-null. Null pointers return `InvalidInput`.
+#[no_mangle]
+pub unsafe extern "C" fn sokr_dispatch(
+    request: *const SokrDispatchRequest,
+    response: *mut SokrDispatchResponse,
+) -> SokrResult {
+    if request.is_null() || response.is_null() {
+        return SokrResult::InvalidInput;
+    }
+
+    let request_ref = unsafe { &*request };
+
+    // Validate IR data pointer is non-null if length is non-zero
+    if request_ref.ir_data_len == 0 {
+        return SokrResult::InvalidInput;
+    }
+    if request_ref.ir_data_ptr.is_null() {
+        return SokrResult::InvalidInput;
+    }
+
+    // TODO: Route to registered substrates and dispatch (Phase 1.3)
+    // For now, return NotFound since no substrates are registered yet
+    let result = SokrResult::NoCapableSubstrate;
+    unsafe {
+        (*response).result = result;
+        (*response).completion_token.handle = 0;
     }
     result
 }
@@ -242,5 +286,72 @@ mod tests {
 
         let result = unsafe { sokr_capability(&query, &mut response) };
         assert_eq!(result, SokrResult::InvalidInput);
+    }
+
+    #[test]
+    fn dispatch_null_pointers_returns_invalid_input() {
+        let mut response = SokrDispatchResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            completion_token: crate::types::SokrCompletionToken { handle: 0 },
+        };
+
+        // Null request pointer
+        let result = unsafe { sokr_dispatch(core::ptr::null(), &mut response) };
+        assert_eq!(result, SokrResult::InvalidInput);
+
+        // Null response pointer
+        let request = SokrDispatchRequest {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            substrate_id: 0,
+            ir_data_ptr: &0u8 as *const u8 as *const core::ffi::c_void,
+            ir_data_len: 1,
+            params_ptr: core::ptr::null(),
+            params_len: 0,
+        };
+        let result = unsafe { sokr_dispatch(&request, core::ptr::null_mut()) };
+        assert_eq!(result, SokrResult::InvalidInput);
+    }
+
+    #[test]
+    fn dispatch_zero_length_ir_returns_invalid_input() {
+        let request = SokrDispatchRequest {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            substrate_id: 0,
+            ir_data_ptr: &0u8 as *const u8 as *const core::ffi::c_void,
+            ir_data_len: 0,
+            params_ptr: core::ptr::null(),
+            params_len: 0,
+        };
+        let mut response = SokrDispatchResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            completion_token: crate::types::SokrCompletionToken { handle: 0 },
+        };
+
+        let result = unsafe { sokr_dispatch(&request, &mut response) };
+        assert_eq!(result, SokrResult::InvalidInput);
+    }
+
+    #[test]
+    fn dispatch_populates_response() {
+        let request = SokrDispatchRequest {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            substrate_id: 0,
+            ir_data_ptr: &0u8 as *const u8 as *const core::ffi::c_void,
+            ir_data_len: 1,
+            params_ptr: core::ptr::null(),
+            params_len: 0,
+        };
+        let mut response = SokrDispatchResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            completion_token: crate::types::SokrCompletionToken { handle: 0 },
+        };
+
+        let result = unsafe { sokr_dispatch(&request, &mut response) };
+        assert_eq!(result, SokrResult::NoCapableSubstrate);
+        assert_eq!(response.result, SokrResult::NoCapableSubstrate);
+        assert_eq!(response.completion_token.handle, 0);
     }
 }
