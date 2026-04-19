@@ -147,7 +147,8 @@ pub unsafe extern "C" fn sokr_dispatch(
 /// - `signal`: Pointer to store the completion signal
 ///
 /// # Returns
-/// - `SokrResult::Ok` on success
+/// - `SokrResult::Ok` on success (when routed to a substrate)
+/// - `SokrResult::NoCapableSubstrate` if no substrate is registered (current stub behavior)
 /// - `SokrResult::InvalidInput` if either pointer is null or token handle is 0 (invalid)
 ///
 /// # Timeout Behavior
