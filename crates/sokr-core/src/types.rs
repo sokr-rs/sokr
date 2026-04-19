@@ -243,7 +243,7 @@ pub struct SokrSubstratePlugin {
     pub completion_fn: SokrCompletionFn,
     /// Cleanup function called on deregistration.
     pub destroy_fn: SokrDestroyFn,
-    _padding: [u8; 16],
+    pub(crate) _padding: [u8; 16],
 }
 
 #[cfg(test)]

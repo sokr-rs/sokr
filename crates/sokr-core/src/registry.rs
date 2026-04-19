@@ -147,7 +147,7 @@ mod tests {
     fn register_full_returns_error() {
         let mut reg = Registry::new();
         for _ in 0..MAX_SUBSTRATES {
-            reg.register(dummy_plugin()).unwrap();
+            assert!(reg.register(dummy_plugin()).is_ok());
         }
         assert!(reg.is_full());
         assert!(reg.register(dummy_plugin()).is_err());
@@ -156,7 +156,7 @@ mod tests {
     #[test]
     fn get_returns_registered() {
         let mut reg = Registry::new();
-        reg.register(dummy_plugin()).unwrap();
+        assert!(reg.register(dummy_plugin()).is_ok());
         assert!(reg.get(0).is_some());
         assert!(reg.get(1).is_none());
     }
@@ -164,8 +164,8 @@ mod tests {
     #[test]
     fn iter_visits_all() {
         let mut reg = Registry::new();
-        reg.register(dummy_plugin()).unwrap();
-        reg.register(dummy_plugin()).unwrap();
+        assert!(reg.register(dummy_plugin()).is_ok());
+        assert!(reg.register(dummy_plugin()).is_ok());
         let count = reg.iter().count();
         assert_eq!(count, 2);
     }
