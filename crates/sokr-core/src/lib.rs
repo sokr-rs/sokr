@@ -36,7 +36,10 @@ pub mod types;
 pub use registry::{Registry, MAX_SUBSTRATES};
 pub use types::*;
 
-// Panic handler for no_std environment
+// Panic handler for no_std environment.
+// Intentionally spins forever (halts) on panic — this is the no_std equivalent
+// of aborting. In embedded contexts, this prevents undefined behavior from
+// unwinding. The CPU will burn cycles; external watchdog or reset is expected.
 #[cfg(not(test))]
 #[allow(clippy::missing_const_for_fn)]
 #[panic_handler]

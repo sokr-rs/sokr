@@ -27,6 +27,11 @@ include = [
 
 [fn]
 rename_types = "SnakeCase"
+include = [
+    "sokr_version",
+    "sokr_check_version",
+    "sokr_capability",
+]
 
 [struct]
 rename_types = "SnakeCase"

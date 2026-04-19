@@ -83,7 +83,11 @@ pub unsafe extern "C" fn sokr_capability(
 
     // TODO: Route to registered substrates (Phase 1.3)
     // For now, return NotFound since no substrates are registered yet
-    SokrResult::NoCapableSubstrate
+    let result = SokrResult::NoCapableSubstrate;
+    unsafe {
+        (*response).result = result;
+    }
+    result
 }
 
 #[cfg(test)]
@@ -176,6 +180,28 @@ mod tests {
 
         let result = unsafe { sokr_capability(&query, &mut response) };
         assert_eq!(result, SokrResult::InvalidInput);
+        // Early returns don't populate response - this is acceptable for InvalidInput
+    }
+
+    #[test]
+    fn capability_populates_response_result() {
+        let query = SokrCapabilityQuery {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            ir_format: [0].as_ptr().cast(),
+            ir_data_ptr: &0u8 as *const u8 as *const core::ffi::c_void,
+            ir_data_len: 1,
+            padding: [0; 8],
+        };
+        let mut response = SokrCapabilityResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            substrate_id: 0,
+            estimated_latency_ns: 0,
+        };
+
+        let result = unsafe { sokr_capability(&query, &mut response) };
+        assert_eq!(result, SokrResult::NoCapableSubstrate);
+        assert_eq!(response.result, SokrResult::NoCapableSubstrate);
     }
 
     #[test]
