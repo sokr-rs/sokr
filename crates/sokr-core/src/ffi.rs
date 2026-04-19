@@ -5,7 +5,7 @@
 
 #![allow(unsafe_code)]
 
-use crate::types::{SokrResult, SokrVersion};
+use crate::types::{SokrCapabilityQuery, SokrCapabilityResponse, SokrResult, SokrVersion};
 
 #[allow(missing_docs)]
 static SOKR_VERSION_STATIC: SokrVersion = SokrVersion::CURRENT;
@@ -48,6 +48,42 @@ pub unsafe extern "C" fn sokr_check_version(
     }
 
     compatibility
+}
+
+/// Queries a substrate's capability to fulfill a computation.
+///
+/// # Arguments
+/// - `query`: Pointer to capability query descriptor
+/// - `response`: Pointer to store the response
+///
+/// # Returns
+/// - `SokrResult::Ok` on success
+/// - `SokrResult::InvalidInput` if either pointer is null or IR data length is zero
+///
+/// # Safety
+/// Pointers must be properly aligned if non-null. Null pointers return `InvalidInput`.
+#[no_mangle]
+pub unsafe extern "C" fn sokr_capability(
+    query: *const SokrCapabilityQuery,
+    response: *mut SokrCapabilityResponse,
+) -> SokrResult {
+    if query.is_null() || response.is_null() {
+        return SokrResult::InvalidInput;
+    }
+
+    let query_ref = unsafe { &*query };
+
+    // Validate IR data pointer is non-null if length is non-zero
+    if query_ref.ir_data_len == 0 {
+        return SokrResult::InvalidInput;
+    }
+    if query_ref.ir_format.is_null() || query_ref.ir_data_ptr.is_null() {
+        return SokrResult::InvalidInput;
+    }
+
+    // TODO: Route to registered substrates (Phase 1.3)
+    // For now, return NotFound since no substrates are registered yet
+    SokrResult::NoCapableSubstrate
 }
 
 #[cfg(test)]
@@ -95,5 +131,90 @@ mod tests {
         let status = unsafe { sokr_check_version(&newer, &mut result) };
         assert_eq!(status, SokrResult::VersionMismatch);
         assert_eq!(result, 0);
+    }
+
+    #[test]
+    fn capability_null_pointers_returns_invalid_input() {
+        let mut response = SokrCapabilityResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            substrate_id: 0,
+            estimated_latency_ns: 0,
+        };
+
+        // Null query pointer
+        let result = unsafe { sokr_capability(core::ptr::null(), &mut response) };
+        assert_eq!(result, SokrResult::InvalidInput);
+
+        // Null response pointer
+        let query = SokrCapabilityQuery {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            ir_format: [0].as_ptr().cast(),
+            ir_data_ptr: &0u8 as *const u8 as *const core::ffi::c_void,
+            ir_data_len: 1,
+            padding: [0; 8],
+        };
+        let result = unsafe { sokr_capability(&query, core::ptr::null_mut()) };
+        assert_eq!(result, SokrResult::InvalidInput);
+    }
+
+    #[test]
+    fn capability_zero_length_ir_returns_invalid_input() {
+        let query = SokrCapabilityQuery {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            ir_format: [0].as_ptr().cast(),
+            ir_data_ptr: &0u8 as *const u8 as *const core::ffi::c_void,
+            ir_data_len: 0,
+            padding: [0; 8],
+        };
+        let mut response = SokrCapabilityResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            substrate_id: 0,
+            estimated_latency_ns: 0,
+        };
+
+        let result = unsafe { sokr_capability(&query, &mut response) };
+        assert_eq!(result, SokrResult::InvalidInput);
+    }
+
+    #[test]
+    fn capability_null_ir_format_returns_invalid_input() {
+        let query = SokrCapabilityQuery {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            ir_format: core::ptr::null(),
+            ir_data_ptr: &0u8 as *const u8 as *const core::ffi::c_void,
+            ir_data_len: 1,
+            padding: [0; 8],
+        };
+        let mut response = SokrCapabilityResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            substrate_id: 0,
+            estimated_latency_ns: 0,
+        };
+
+        let result = unsafe { sokr_capability(&query, &mut response) };
+        assert_eq!(result, SokrResult::InvalidInput);
+    }
+
+    #[test]
+    fn capability_null_ir_data_returns_invalid_input() {
+        let query = SokrCapabilityQuery {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            ir_format: [0].as_ptr().cast(),
+            ir_data_ptr: core::ptr::null(),
+            ir_data_len: 1,
+            padding: [0; 8],
+        };
+        let mut response = SokrCapabilityResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            substrate_id: 0,
+            estimated_latency_ns: 0,
+        };
+
+        let result = unsafe { sokr_capability(&query, &mut response) };
+        assert_eq!(result, SokrResult::InvalidInput);
     }
 }

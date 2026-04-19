@@ -147,11 +147,11 @@ and hardware that does not yet exist.
   - [x] Define `#[repr(C)] enum SokrResult` with all 10 variants
   - [x] Implement `is_ok()` and `is_err()` methods
   - [x] Unit test: `is_ok()` and `is_err()` behavior
-- [ ] 🔴 Implement `SokrCapabilityQuery` and `SokrCapabilityResponse`
-  - [ ] Define structs per ABI spec
-  - [ ] Validate pointer fields are non-null before use
-  - [ ] Unit test: null pointer returns `SokrResult::InvalidInput`
-  - [ ] Unit test: zero-length IR data returns `InvalidInput`
+- [x] 🔴 Implement `SokrCapabilityQuery` and `SokrCapabilityResponse`
+  - [x] Define structs per ABI spec
+  - [x] Validate pointer fields are non-null before use
+  - [x] Unit test: null pointer returns `SokrResult::InvalidInput`
+  - [x] Unit test: zero-length IR data returns `InvalidInput`
 - [ ] 🔴 Implement `SokrDispatchRequest` and `SokrDispatchResponse`
   - [ ] Define structs per ABI spec
   - [ ] Define `SokrCompletionToken` — opaque 64-bit handle
