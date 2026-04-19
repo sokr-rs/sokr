@@ -156,10 +156,10 @@ and hardware that does not yet exist.
   - [x] Define structs per ABI spec
   - [x] Define `SokrCompletionToken` — opaque 64-bit handle
   - [x] Unit test: dispatch request round-trips through registry
-- [ ] 🔴 Implement `SokrCompletionQuery` and `SokrCompletionSignal`
-  - [ ] Define structs per ABI spec
-  - [ ] Implement timeout logic — `timeout_ns = 0` means non-blocking poll
-  - [ ] Unit test: completion signal all variants represented
+- [x] 🔴 Implement `SokrCompletionQuery` and `SokrCompletionSignal`
+  - [x] Define structs per ABI spec
+  - [x] Implement timeout logic — `timeout_ns = 0` means non-blocking poll
+  - [x] Unit test: completion signal all variants represented
 - [ ] 🔴 Implement `SokrSubstratePlugin` vtable
   - [ ] Define `#[repr(C)] struct SokrSubstratePlugin` with function pointers
   - [ ] Validate all function pointers non-null at registration

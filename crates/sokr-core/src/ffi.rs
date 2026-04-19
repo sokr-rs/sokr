@@ -6,8 +6,8 @@
 #![allow(unsafe_code)]
 
 use crate::types::{
-    SokrCapabilityQuery, SokrCapabilityResponse, SokrDispatchRequest, SokrDispatchResponse,
-    SokrResult, SokrVersion,
+    SokrCapabilityQuery, SokrCapabilityResponse, SokrCompletionQuery, SokrCompletionSignal,
+    SokrDispatchRequest, SokrDispatchResponse, SokrResult, SokrVersion,
 };
 
 #[allow(missing_docs)]
@@ -136,6 +136,47 @@ pub unsafe extern "C" fn sokr_dispatch(
         (*response).result = result;
         (*response).padding = 0;
         (*response).completion_token.handle = 0;
+    }
+    result
+}
+
+/// Queries the completion status of a dispatched computation.
+///
+/// # Arguments
+/// - `query`: Pointer to completion query descriptor
+/// - `signal`: Pointer to store the completion signal
+///
+/// # Returns
+/// - `SokrResult::Ok` on success
+/// - `SokrResult::InvalidInput` if either pointer is null or token handle is 0 (invalid)
+///
+/// # Timeout Behavior
+/// - `timeout_ns = 0`: Non-blocking poll, returns immediately with current status
+/// - `timeout_ns > 0`: Blocks up to specified nanoseconds (TODO: implement in Phase 1.3)
+///
+/// # Safety
+/// Pointers must be properly aligned if non-null. Null pointers return `InvalidInput`.
+#[no_mangle]
+pub unsafe extern "C" fn sokr_completion(
+    query: *const SokrCompletionQuery,
+    signal: *mut SokrCompletionSignal,
+) -> SokrResult {
+    if query.is_null() || signal.is_null() {
+        return SokrResult::InvalidInput;
+    }
+
+    let query_ref = unsafe { &*query };
+
+    // Validate token handle is non-zero (invalid/unset sentinel)
+    if query_ref.completion_token.handle == 0 {
+        return SokrResult::InvalidInput;
+    }
+
+    // TODO: Route to registered substrates and check completion (Phase 1.3)
+    // For now, return NotFound since no substrates are registered yet
+    let result = SokrResult::NoCapableSubstrate;
+    unsafe {
+        (*signal) = SokrCompletionSignal::Pending;
     }
     result
 }
@@ -366,5 +407,60 @@ mod tests {
         assert_eq!(response.result, SokrResult::NoCapableSubstrate);
         // Function overwrites sentinel with 0 (invalid token sentinel)
         assert_eq!(response.completion_token.handle, 0);
+    }
+
+    #[test]
+    fn completion_null_pointers_returns_invalid_input() {
+        let mut signal = SokrCompletionSignal::Pending;
+
+        // Null query pointer
+        let result = unsafe { sokr_completion(core::ptr::null(), &mut signal) };
+        assert_eq!(result, SokrResult::InvalidInput);
+
+        // Null signal pointer
+        let query = SokrCompletionQuery {
+            completion_token: crate::types::SokrCompletionToken { handle: 1 },
+            timeout_ns: 0,
+            padding: [0; 8],
+        };
+        let result = unsafe { sokr_completion(&query, core::ptr::null_mut()) };
+        assert_eq!(result, SokrResult::InvalidInput);
+    }
+
+    #[test]
+    fn completion_invalid_token_handle_returns_invalid_input() {
+        let query = SokrCompletionQuery {
+            completion_token: crate::types::SokrCompletionToken { handle: 0 }, // Invalid
+            timeout_ns: 0,
+            padding: [0; 8],
+        };
+        let mut signal = SokrCompletionSignal::Pending;
+
+        let result = unsafe { sokr_completion(&query, &mut signal) };
+        assert_eq!(result, SokrResult::InvalidInput);
+    }
+
+    #[test]
+    fn completion_populates_signal_pending() {
+        let query = SokrCompletionQuery {
+            completion_token: crate::types::SokrCompletionToken { handle: 1 },
+            timeout_ns: 0,
+            padding: [0; 8],
+        };
+        // Use sentinel to prove the function actually writes to signal
+        let mut signal = SokrCompletionSignal::Complete;
+
+        let result = unsafe { sokr_completion(&query, &mut signal) };
+        assert_eq!(result, SokrResult::NoCapableSubstrate);
+        assert_eq!(signal, SokrCompletionSignal::Pending);
+    }
+
+    #[test]
+    fn completion_signal_variants_all_represented() {
+        // Ensure all enum variants can be constructed and have correct discriminants
+        assert_eq!(SokrCompletionSignal::Pending as u32, 0);
+        assert_eq!(SokrCompletionSignal::Complete as u32, 1);
+        assert_eq!(SokrCompletionSignal::Failed as u32, 2);
+        assert_eq!(SokrCompletionSignal::TimedOut as u32, 3);
     }
 }

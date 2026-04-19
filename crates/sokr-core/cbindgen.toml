@@ -32,6 +32,7 @@ include = [
     "sokr_check_version",
     "sokr_capability",
     "sokr_dispatch",
+    "sokr_completion",
 ]
 
 [struct]
