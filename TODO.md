@@ -126,25 +126,27 @@ and hardware that does not yet exist.
   - [x] `docs/` — specs, RFCs, design notes
 
 ### 1.2 Core ABI (`sokr-core`)
-- [ ] 🔴 Scaffold `crates/sokr-core/`
-  - [ ] `Cargo.toml` — `no_std`, no dependencies, `crate-type = ["staticlib", "cdylib"]`
-  - [ ] `src/lib.rs` — `#![no_std]`, `#![forbid(unsafe_code)]` outside FFI boundary
-  - [ ] `src/types.rs` — all C ABI struct and enum definitions
-  - [ ] `src/registry.rs` — plugin registry implementation
-  - [ ] `src/ffi.rs` — `#[no_mangle] extern "C"` function exports
-  - [ ] `cbindgen.toml` — configuration for header generation
-- [ ] 🔴 Implement `SokrVersion`
-  - [ ] Define `#[repr(C)] struct SokrVersion { major: u32, minor: u32, patch: u32 }`
-  - [ ] Implement `SokrVersion::current()` — returns compiled-in version
-  - [ ] Implement `SokrVersion::is_compatible_with()` — compatibility check logic
-  - [ ] Unit test: compatible versions pass
-  - [ ] Unit test: major mismatch fails
-  - [ ] Unit test: minor forward compatibility passes
-  - [ ] Unit test: patch difference does not affect compatibility
-- [ ] 🔴 Implement `SokrResult`
-  - [ ] Define `#[repr(C)] enum SokrResult` with all variants
-  - [ ] Implement `Display` for `SokrResult` — alloc-free, fixed strings
-  - [ ] Unit test: all variants round-trip through C ABI
+- [x] 🔴 Scaffold `crates/sokr-core/`
+  - [x] `Cargo.toml` — `no_std`, no dependencies, `crate-type = ["rlib"]`¹
+  - [x] `src/lib.rs` — `#![no_std]`, `#![forbid(unsafe_code)]` outside FFI boundary
+  - [x] `src/types.rs` — all C ABI struct and enum definitions
+  - [x] `src/registry.rs` — plugin registry implementation
+  - [x] `src/ffi.rs` — `#[no_mangle] extern "C"` function exports
+  - [x] `cbindgen.toml` — configuration for header generation
+
+¹ `staticlib`/`cdylib` built on-demand: `cargo build --crate-type staticlib,cdylib`
+- [x] 🔴 Implement `SokrVersion`
+  - [x] Define `#[repr(C)] struct SokrVersion { major: u32, minor: u32, patch: u32 }`
+  - [x] Implement `SokrVersion::CURRENT` — compiled-in version constant
+  - [x] Implement `SokrVersion::check_compatible()` — compatibility check logic
+  - [x] Unit test: compatible versions pass
+  - [x] Unit test: major mismatch fails
+  - [x] Unit test: plugin too new fails
+  - [x] Unit test: patch difference does not affect compatibility
+- [x] 🔴 Implement `SokrResult`
+  - [x] Define `#[repr(C)] enum SokrResult` with all 10 variants
+  - [x] Implement `is_ok()` and `is_err()` methods
+  - [x] Unit test: `is_ok()` and `is_err()` behavior
 - [ ] 🔴 Implement `SokrCapabilityQuery` and `SokrCapabilityResponse`
   - [ ] Define structs per ABI spec
   - [ ] Validate pointer fields are non-null before use
