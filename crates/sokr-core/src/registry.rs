@@ -123,7 +123,7 @@ mod tests {
             dispatch_fn: dummy_dispatch,
             completion_fn: dummy_completion,
             destroy_fn: dummy_destroy,
-            _padding: [0; 16],
+            padding: [0; 16],
         }
     }
 
@@ -168,5 +168,13 @@ mod tests {
         assert!(reg.register(dummy_plugin()).is_ok());
         let count = reg.iter().count();
         assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn get_out_of_bounds_returns_none() {
+        let mut reg = Registry::new();
+        assert!(reg.register(dummy_plugin()).is_ok());
+        assert!(reg.get(MAX_SUBSTRATES).is_none());
+        assert!(reg.get(usize::MAX).is_none());
     }
 }

@@ -74,7 +74,7 @@ impl SokrVersion {
 }
 
 /// Result codes for SOKR operations.
-#[repr(C)]
+#[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SokrResult {
     /// Operation succeeded.
@@ -134,7 +134,8 @@ pub struct SokrCapabilityQuery {
     pub ir_data_ptr: *const c_void,
     /// Length of IR data in bytes.
     pub ir_data_len: usize,
-    _padding: [u8; 8],
+    /// Reserved padding for ABI alignment.
+    pub padding: [u8; 8],
 }
 
 /// Response from a capability query.
@@ -142,7 +143,8 @@ pub struct SokrCapabilityQuery {
 pub struct SokrCapabilityResponse {
     /// Result of the capability query.
     pub result: SokrResult,
-    _padding: u32,
+    /// Reserved padding for ABI alignment.
+    pub padding: u32,
     /// Substrate that can fulfill this computation (if capable).
     pub substrate_id: u64,
     /// Estimated latency in nanoseconds (0 if unknown).
@@ -171,7 +173,8 @@ pub struct SokrDispatchRequest {
 pub struct SokrDispatchResponse {
     /// Result of the dispatch request.
     pub result: SokrResult,
-    _padding: u32,
+    /// Reserved padding for ABI alignment.
+    pub padding: u32,
     /// Token to query completion status.
     pub completion_token: SokrCompletionToken,
 }
@@ -191,11 +194,12 @@ pub struct SokrCompletionQuery {
     pub completion_token: SokrCompletionToken,
     /// Timeout in nanoseconds (0 for no timeout).
     pub timeout_ns: u64,
-    _padding: [u8; 8],
+    /// Reserved padding for ABI alignment.
+    pub padding: [u8; 8],
 }
 
 /// Completion status signal.
-#[repr(C)]
+#[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SokrCompletionSignal {
     /// Operation is still pending.
@@ -243,7 +247,8 @@ pub struct SokrSubstratePlugin {
     pub completion_fn: SokrCompletionFn,
     /// Cleanup function called on deregistration.
     pub destroy_fn: SokrDestroyFn,
-    pub(crate) _padding: [u8; 16],
+    /// Reserved padding for ABI alignment.
+    pub padding: [u8; 16],
 }
 
 #[cfg(test)]

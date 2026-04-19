@@ -7,6 +7,9 @@
 
 use crate::types::{SokrResult, SokrVersion};
 
+#[allow(missing_docs)]
+static SOKR_VERSION_STATIC: SokrVersion = SokrVersion::CURRENT;
+
 /// Returns the current SOKR core ABI version.
 ///
 /// # Safety
@@ -14,7 +17,7 @@ use crate::types::{SokrResult, SokrVersion};
 /// Do not free or modify it.
 #[no_mangle]
 pub extern "C" fn sokr_version() -> *const SokrVersion {
-    core::ptr::addr_of!(SokrVersion::CURRENT)
+    core::ptr::addr_of!(SOKR_VERSION_STATIC)
 }
 
 /// Checks if a plugin version is compatible with this core.
@@ -65,10 +68,10 @@ mod tests {
     #[test]
     fn check_version_null_pointers() {
         let current = SokrVersion::CURRENT;
-        let result = unsafe { sokr_check_version(std::ptr::null(), &mut 0) };
+        let result = unsafe { sokr_check_version(core::ptr::null(), &mut 0) };
         assert_eq!(result, SokrResult::InvalidInput);
 
-        let result = unsafe { sokr_check_version(&current, std::ptr::null_mut()) };
+        let result = unsafe { sokr_check_version(&current, core::ptr::null_mut()) };
         assert_eq!(result, SokrResult::InvalidInput);
     }
 
