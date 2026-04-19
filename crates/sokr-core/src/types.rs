@@ -166,6 +166,8 @@ pub struct SokrDispatchRequest {
     pub params_ptr: *const c_void,
     /// Length of parameters in bytes.
     pub params_len: usize,
+    /// Reserved padding for ABI alignment and future extension.
+    pub padding: [u8; 16],
 }
 
 /// Response from a dispatch request.
@@ -180,10 +182,16 @@ pub struct SokrDispatchResponse {
 }
 
 /// Opaque 64-bit completion handle.
+///
+/// ## Valid Token Contract
+/// - `handle = 0` is reserved as the "invalid / unset" sentinel
+/// - Valid tokens are always non-zero (assigned by substrate on successful dispatch)
+/// - Callers receiving `handle = 0` on error should not use it for completion queries
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SokrCompletionToken {
     /// Opaque handle identifying this completion.
+    /// Value of 0 indicates an invalid or unset token.
     pub handle: u64,
 }
 

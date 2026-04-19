@@ -124,11 +124,17 @@ pub unsafe extern "C" fn sokr_dispatch(
         return SokrResult::InvalidInput;
     }
 
+    // Validate params pointer is non-null if length is non-zero
+    if request_ref.params_len > 0 && request_ref.params_ptr.is_null() {
+        return SokrResult::InvalidInput;
+    }
+
     // TODO: Route to registered substrates and dispatch (Phase 1.3)
     // For now, return NotFound since no substrates are registered yet
     let result = SokrResult::NoCapableSubstrate;
     unsafe {
         (*response).result = result;
+        (*response).padding = 0;
         (*response).completion_token.handle = 0;
     }
     result
@@ -308,6 +314,7 @@ mod tests {
             ir_data_len: 1,
             params_ptr: core::ptr::null(),
             params_len: 0,
+            padding: [0; 16],
         };
         let result = unsafe { sokr_dispatch(&request, core::ptr::null_mut()) };
         assert_eq!(result, SokrResult::InvalidInput);
@@ -322,6 +329,7 @@ mod tests {
             ir_data_len: 0,
             params_ptr: core::ptr::null(),
             params_len: 0,
+            padding: [0; 16],
         };
         let mut response = SokrDispatchResponse {
             result: SokrResult::Ok,
@@ -342,16 +350,21 @@ mod tests {
             ir_data_len: 1,
             params_ptr: core::ptr::null(),
             params_len: 0,
+            padding: [0; 16],
         };
         let mut response = SokrDispatchResponse {
             result: SokrResult::Ok,
             padding: 0,
-            completion_token: crate::types::SokrCompletionToken { handle: 0 },
+            // Use sentinel to prove the function actually writes to handle
+            completion_token: crate::types::SokrCompletionToken {
+                handle: 0xDEAD_BEEF,
+            },
         };
 
         let result = unsafe { sokr_dispatch(&request, &mut response) };
         assert_eq!(result, SokrResult::NoCapableSubstrate);
         assert_eq!(response.result, SokrResult::NoCapableSubstrate);
+        // Function overwrites sentinel with 0 (invalid token sentinel)
         assert_eq!(response.completion_token.handle, 0);
     }
 }
