@@ -1,6 +1,6 @@
 # SOKR Architecture
 
-> Sovereign Open Kernel Runtime
+> Sovereign Open Kernel Runtime — Core Only
 
 ---
 
@@ -147,13 +147,13 @@ onwards. This ensures the core ABI never silently breaks existing plugins.
                      │
 ┌────────────────────▼────────────────────┐
 │              IR Plugin                  │
-│  swappable: SOKR-native, SPIR-V,        │
+│  swappable: SOKR-native, SPIR-V,        │  ← sokr-plugins repo
 │  OpenQASM 3, or any future IR           │
 └────────────────────┬────────────────────┘
                      │
 ┌────────────────────▼────────────────────┐
 │             SOKR Core                   │
-│         (immutable, no_std)             │
+│         (immutable, no_std)             │  ← this repo
 │                                         │
 │   Capability → Dispatch → Completion    │
 │         + version handshake             │
@@ -163,7 +163,7 @@ onwards. This ensures the core ABI never silently breaks existing plugins.
                      │
 ┌────────────────────▼────────────────────┐
 │           Substrate Plugin              │
-│  swappable: GPU, CPU, QPU,              │
+│  swappable: GPU, CPU, QPU,              │  ← sokr-plugins repo
 │  Neuromorphic, Photonic, or future      │
 └────────────────────┬────────────────────┘
                      │
@@ -172,57 +172,53 @@ onwards. This ensures the core ABI never silently breaks existing plugins.
 └─────────────────────────────────────────┘
 ```
 
-Every layer above and below the core is independently swappable.
-Removing a layer does not touch the core. Adding a new layer does
-not require a core change.
+Everything above and below the core is a plugin and lives in
+[sokr-rs/sokr-plugins](https://github.com/sokr-rs/sokr-plugins)
+or in third-party repos. The core has no knowledge of any plugin.
 
 ---
 
-## Plugin Categories
+## Repository Structure
 
-### IR Plugins
-Translate user computation into a form the substrate plugin can accept.
+This repo is a single crate — no workspace.
 
-| Plugin | IR Format | Status |
-|---|---|---|
-| `sokr-ir` | SOKR-native (TBD) | Planned |
-| `sokr-spirv` | SPIR-V | Planned |
-| `sokr-ptx` | PTX (NVIDIA) | Planned |
-| `sokr-openqasm` | OpenQASM 3 | Future |
+```
+sokr/
+├── src/
+│   ├── lib.rs        ← crate root, no_std, panic handler
+│   ├── types.rs      ← all C ABI struct and enum definitions
+│   ├── registry.rs   ← plugin registry, no heap allocation
+│   └── ffi.rs        ← #[no_mangle] extern "C" exports (unsafe boundary)
+├── docs/
+│   ├── rfc/          ← RFC documents
+│   └── references.md ← curated design references
+├── Cargo.toml        ← single crate, published as `sokr`
+└── cbindgen.toml     ← C header generation config
+```
 
-### Substrate Plugins
-Fulfill computations on physical or virtual hardware.
+---
 
-| Plugin | Target | Status |
-|---|---|---|
-| `sokr-cpu` | CPU (fallback, always available) | Phase 1 |
-| `sokr-vulkan` | Vulkan-compatible GPUs | Phase 2 |
-| `sokr-cuda` | NVIDIA CUDA | Phase 2 |
-| `sokr-metal` | Apple Metal | Phase 2 |
-| `sokr-webgpu` | Browser / Edge | Phase 3 |
-| `sokr-qpu` | Quantum processors | Future |
-| `sokr-neuro` | Neuromorphic hardware | Future |
-| `sokr-photon` | Photonic compute | Future |
+## Plugin Contract
 
-### Language Binding Plugins
-Expose SOKR to language ecosystems.
+A plugin is valid if and only if it correctly implements
+`SokrSubstratePlugin` — a `#[repr(C)]` vtable of four function pointers:
 
-| Plugin | Language | Mechanism |
-|---|---|---|
-| `sokr` (this crate) | Rust | native |
-| `sokr-c` | C / C++ | `cbindgen` headers |
-| `sokr-python` | Python | PyO3 |
-| `sokr-wasm` | JavaScript / Browser | `wasm-bindgen` |
-| `sokr-java` | JVM | `jni-rs` |
+```c
+typedef struct {
+    SokrVersion    version;
+    SokrCapabilityFn  capability_fn;
+    SokrDispatchFn    dispatch_fn;
+    SokrCompletionFn  completion_fn;
+    SokrDestroyFn     destroy_fn;
+} SokrSubstratePlugin;
+```
 
-### Dispatch Policy Plugins
-Decide which substrate handles which computation at runtime.
+A plugin can be written in any language that can produce a C ABI
+shared library. No Rust required. No permission from The SOKR Project
+required. The contract is the crate.
 
-| Plugin | Strategy | Status |
-|---|---|---|
-| `sokr-dispatch-first` | First capable substrate wins | Phase 1 |
-| `sokr-dispatch-perf` | Performance-profile-aware routing | Phase 3 |
-| `sokr-dispatch-cost` | Cost-aware routing (cloud context) | Future |
+Reference implementations:
+[github.com/sokr-rs/sokr-plugins](https://github.com/sokr-rs/sokr-plugins)
 
 ---
 
@@ -248,7 +244,7 @@ The plugin, not the core, handles the mapping.
 SOKR uses a hybrid IR model:
 
 - **SOKR-native IR** — high-level, substrate-agnostic. Users who want
-  full portability write to this. The plugin translates down.
+  full portability write to this. The IR plugin translates down.
 - **Direct passthrough** — users who need maximum performance or
   hardware-specific features pass substrate-native IR directly.
   The plugin accepts it without translation overhead.
@@ -279,6 +275,9 @@ change to SOKR's philosophy, not just its API.
 5. **License imposes no conditions** — MIT OR Apache-2.0. No plugin
    author needs permission from anyone to build on SOKR.
 
+6. **Single crate, no workspace** — the core is one crate. Plugins
+   are separate repos. This boundary is structural, not just conventional.
+
 ---
 
 ## Non-Goals
@@ -289,6 +288,7 @@ change to SOKR's philosophy, not just its API.
 - SOKR is not a replacement for CUDA in CUDA-specific workflows
 - SOKR does not own the algorithm
 - SOKR does not own the substrate
+- SOKR does not ship plugins — those are in `sokr-plugins`
 
 ---
 
