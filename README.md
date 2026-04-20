@@ -48,7 +48,7 @@ User code (any language)
         ↓
 IR Plugin          ← swappable: SOKR-native, SPIR-V, OpenQASM, or future
         ↓
-SOKR Core          ← immutable, no_std, C ABI
+SOKR Core          ← immutable, no_std, C ABI  ← this repo
   Capability → Dispatch → Completion
         ↓
 Substrate Plugin   ← swappable: GPU, CPU, QPU, Neuromorphic, Photonic, or future
@@ -56,9 +56,10 @@ Substrate Plugin   ← swappable: GPU, CPU, QPU, Neuromorphic, Photonic, or futu
 Hardware
 ```
 
-Everything above and below the core is a plugin. The core contains
-no assumptions — not about computation representation, not about
-hardware model, not about language, not about security policy.
+**This repo is the core only.** Reference plugins live in
+[sokr-rs/sokr-plugins](https://github.com/sokr-rs/sokr-plugins).
+Third-party plugins need only depend on `sokr` and implement the
+`SokrSubstratePlugin` vtable. No permission required from anyone.
 
 ---
 
@@ -82,24 +83,32 @@ that makes no assumption about the substrate model.
 
 ---
 
-## Target Substrates
+## Repository Structure
 
-Current and future:
+```
+sokr/                    ← this repo (sokr-rs/sokr)
+├── src/
+│   ├── lib.rs           ← crate root, no_std
+│   ├── types.rs         ← C ABI struct and enum definitions
+│   ├── registry.rs      ← plugin registry
+│   └── ffi.rs           ← #[no_mangle] extern "C" exports
+├── docs/
+│   ├── rfc/             ← RFC documents
+│   └── references.md    ← curated references
+├── Cargo.toml           ← single crate, no workspace
+└── cbindgen.toml        ← C header generation config
+```
 
-- GPU — NVIDIA (PTX/CUDA), AMD (HIP), Intel Arc (SPIR-V)
-- CPU — fallback, always available
-- QPU — quantum processors (OpenQASM 3)
-- Neuromorphic — Intel Loihi, IBM NorthPole
-- Photonic — Lightmatter and successors
-- WebGPU — browser and edge compute
+Plugins: [github.com/sokr-rs/sokr-plugins](https://github.com/sokr-rs/sokr-plugins)
 
 ---
 
 ## Status
 
-`v0.1.0` — foundation phase. Crate reserved. Architecture and roadmap in progress.
+`v0.1.x` — foundation phase. Core ABI defined. No runnable code yet.
 
-See [TODO.md](TODO.md) for the full roadmap and [ARCHITECTURE.md](ARCHITECTURE.md) for the design.
+See [TODO.md](TODO.md) for the roadmap and
+[ARCHITECTURE.md](ARCHITECTURE.md) for the design.
 
 ---
 
