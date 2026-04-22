@@ -38,7 +38,7 @@ and hardware that does not yet exist.
   - [x] Verify `cargo check` passes on flattened structure
   - [x] Verify `cargo test` passes on flattened structure
   - [x] Update CI workflow — remove `--workspace` flags
-  - [x] Publish `sokr` v0.1.1 from new structure
+  - [x] Publish `sokr` v0.1.1 from new structure → https://crates.io/crates/sokr/0.1.1
 
 ### 0.2 Design Documents
 - [x] 🔴 Core philosophy documented
