@@ -15,8 +15,6 @@ pub const MAX_SUBSTRATES: usize = 16;
 /// This is a placeholder implementation for Phase 1.2.
 /// Full implementation with thread-safety will be added in Phase 1.3.
 pub struct Registry {
-    /// Number of registered substrates.
-    count: usize,
     /// Fixed-size array of substrate slots.
     substrates: [Option<SokrSubstratePlugin>; MAX_SUBSTRATES],
 }
@@ -27,27 +25,26 @@ impl Registry {
     pub const fn new() -> Self {
         const EMPTY: Option<SokrSubstratePlugin> = None;
         Self {
-            count: 0,
             substrates: [EMPTY; MAX_SUBSTRATES],
         }
     }
 
     /// Returns the number of registered substrates.
     #[must_use]
-    pub const fn len(&self) -> usize {
-        self.count
+    pub fn len(&self) -> usize {
+        self.substrates.iter().filter(|s| s.is_some()).count()
     }
 
     /// Returns true if no substrates are registered.
     #[must_use]
-    pub const fn is_empty(&self) -> bool {
-        self.count == 0
+    pub fn is_empty(&self) -> bool {
+        self.substrates.iter().all(Option::is_none)
     }
 
     /// Returns true if the registry is at capacity.
     #[must_use]
-    pub const fn is_full(&self) -> bool {
-        self.count >= MAX_SUBSTRATES
+    pub fn is_full(&self) -> bool {
+        self.substrates.iter().all(Option::is_some)
     }
 
     /// Registers a substrate plugin.
@@ -61,11 +58,12 @@ impl Registry {
         for slot in &mut self.substrates {
             if slot.is_none() {
                 *slot = Some(plugin);
-                self.count += 1;
                 return SokrResult::Ok;
             }
         }
 
+        // All slots occupied — this path is only reachable when substrates
+        // are modified concurrently (not yet supported) or if is_full() desyncs.
         unreachable!("registry not full but no empty slot found")
     }
 

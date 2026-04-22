@@ -10,13 +10,12 @@ use crate::types::{
     SokrDispatchRequest, SokrDispatchResponse, SokrResult, SokrVersion,
 };
 
-#[allow(missing_docs)]
 static SOKR_VERSION_STATIC: SokrVersion = SokrVersion::CURRENT;
 
 /// Returns the current SOKR core ABI version.
 ///
-/// # Safety
-/// The returned pointer is a static reference valid for the lifetime of the program.
+/// # Returns
+/// Pointer to a `static` `SokrVersion` valid for the lifetime of the program.
 /// Do not free or modify it.
 #[no_mangle]
 pub extern "C" fn sokr_version() -> *const SokrVersion {
@@ -47,7 +46,7 @@ pub unsafe extern "C" fn sokr_check_version(
     let plugin_version = unsafe { *plugin };
     let compatibility = plugin_version.check_compatible(SokrVersion::CURRENT);
     unsafe {
-        *result = if compatibility.is_ok() { 1 } else { 0 };
+        *result = i32::from(compatibility.is_ok());
     }
 
     compatibility
@@ -62,6 +61,11 @@ pub unsafe extern "C" fn sokr_check_version(
 /// # Returns
 /// - `SokrResult::Ok` on success
 /// - `SokrResult::InvalidInput` if either pointer is null or IR data length is zero
+/// - `SokrResult::NoCapableSubstrate` if no substrate can fulfill the computation
+///
+/// # Response Contract (Failure Path)
+/// On any non-`Ok` result, the response is fully zeroed (`result`, `padding`,
+/// `substrate_id`, `estimated_latency_ns`). Callers must not read uninitialized fields.
 ///
 /// # Safety
 /// Pointers must be properly aligned if non-null. Null pointers return `InvalidInput`.
@@ -85,10 +89,13 @@ pub unsafe extern "C" fn sokr_capability(
     }
 
     // TODO: Route to registered substrates (Phase 1.3)
-    // For now, return NotFound since no substrates are registered yet
+    // For now, return NoCapableSubstrate since no substrates are registered yet
     let result = SokrResult::NoCapableSubstrate;
     unsafe {
         (*response).result = result;
+        (*response).padding = 0;
+        (*response).substrate_id = 0;
+        (*response).estimated_latency_ns = 0;
     }
     result
 }
@@ -102,6 +109,11 @@ pub unsafe extern "C" fn sokr_capability(
 /// # Returns
 /// - `SokrResult::Ok` on successful dispatch
 /// - `SokrResult::InvalidInput` if either pointer is null or IR data length is zero
+/// - `SokrResult::NoCapableSubstrate` if no substrate can fulfill the computation
+///
+/// # Response Contract (Failure Path)
+/// On any non-`Ok` result, the response is fully zeroed (`result`, `padding`,
+/// `completion_token.handle = 0`). Callers must not read uninitialized fields.
 ///
 /// # Safety
 /// Pointers must be properly aligned if non-null. Null pointers return `InvalidInput`.
@@ -130,7 +142,7 @@ pub unsafe extern "C" fn sokr_dispatch(
     }
 
     // TODO: Route to registered substrates and dispatch (Phase 1.3)
-    // For now, return NotFound since no substrates are registered yet
+    // For now, return NoCapableSubstrate since no substrates are registered yet
     let result = SokrResult::NoCapableSubstrate;
     unsafe {
         (*response).result = result;
@@ -150,6 +162,10 @@ pub unsafe extern "C" fn sokr_dispatch(
 /// - `SokrResult::Ok` on success (when routed to a substrate)
 /// - `SokrResult::NoCapableSubstrate` if no substrate is registered (current stub behavior)
 /// - `SokrResult::InvalidInput` if either pointer is null or token handle is 0 (invalid)
+///
+/// # Signal Contract (Failure Path)
+/// On any non-`Ok` result, `signal` is set to `SokrCompletionSignal::Failed`.
+/// Callers must not treat a failed query as `Pending`.
 ///
 /// # Timeout Behavior
 /// - `timeout_ns = 0`: Non-blocking poll, returns immediately with current status
@@ -174,10 +190,10 @@ pub unsafe extern "C" fn sokr_completion(
     }
 
     // TODO: Route to registered substrates and check completion (Phase 1.3)
-    // For now, return NotFound since no substrates are registered yet
+    // For now, return NoCapableSubstrate since no substrates are registered yet
     let result = SokrResult::NoCapableSubstrate;
     unsafe {
-        (*signal) = SokrCompletionSignal::Pending;
+        (*signal) = SokrCompletionSignal::Failed;
     }
     result
 }
@@ -442,7 +458,7 @@ mod tests {
     }
 
     #[test]
-    fn completion_populates_signal_pending() {
+    fn completion_populates_signal_failed_on_error() {
         let query = SokrCompletionQuery {
             completion_token: crate::types::SokrCompletionToken { handle: 1 },
             timeout_ns: 0,
@@ -453,7 +469,9 @@ mod tests {
 
         let result = unsafe { sokr_completion(&query, &mut signal) };
         assert_eq!(result, SokrResult::NoCapableSubstrate);
-        assert_eq!(signal, SokrCompletionSignal::Pending);
+        // Failure path writes Failed, not Pending — Pending implies the
+        // computation was accepted and is still running.
+        assert_eq!(signal, SokrCompletionSignal::Failed);
     }
 
     #[test]

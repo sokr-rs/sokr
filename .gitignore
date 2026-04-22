@@ -39,3 +39,4 @@ coverage/
 
 # Personal Claude Code overrides
 CLAUDE.local.md
+.claude/

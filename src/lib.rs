@@ -23,7 +23,7 @@
 //! do not yet exist.
 
 #![cfg_attr(not(test), no_std)]
-#![cfg_attr(not(feature = "ffi"), forbid(unsafe_code))]
+#![deny(unsafe_code)]
 
 #[cfg(not(test))]
 use core::panic::PanicInfo;

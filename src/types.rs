@@ -349,4 +349,17 @@ mod tests {
         assert_eq!(id1, id2);
         assert_ne!(id1, id3);
     }
+
+    #[test]
+    fn current_version_matches_cargo() {
+        // Prevent drift between SokrVersion::CURRENT and Cargo.toml version.
+        let current = SokrVersion::CURRENT;
+        let cargo = env!("CARGO_PKG_VERSION");
+        let expected = format!("{}.{}.{}", current.major, current.minor, current.patch);
+        assert_eq!(
+            expected, cargo,
+            "SokrVersion::CURRENT ({expected}) must match CARGO_PKG_VERSION ({cargo}). \
+             Bump both together in Cargo.toml and types.rs."
+        );
+    }
 }
