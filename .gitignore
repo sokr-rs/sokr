@@ -36,3 +36,6 @@ coverage/
 .skill/
 .cursor/rules/skill-context.md
 .windsurf/rules/skill-context.md
+
+# Personal Claude Code overrides
+CLAUDE.local.md
