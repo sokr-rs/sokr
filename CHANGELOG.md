@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-04-22
+
+### Changed
+
+- **Flattened to single crate**: Merged `sokr-core`, `sokr-cpu`, and `sokr-dispatch-first` workspace members into a single `sokr` crate. Plugin crates moved to `sokr-plugins` repo.
+
+### Added
+
+- **FFI validation layer**: All four entry points (`sokr_version`, `sokr_check_version`, `sokr_capability`, `sokr_dispatch`, `sokr_completion`) now validate input pointers and return `InvalidInput` on null/zero-length violations.
+- **`SokrCompletionToken.handle = 0` sentinel contract**: Documented and enforced — `sokr_completion` rejects handle 0 as invalid input.
+- **`SokrDispatchRequest.padding`**: Added `[u8; 16]` padding field for ABI extensibility, consistent with other request structs.
+
 ## [0.1.0] - 2026-04-17
 
 ### Added
@@ -47,5 +59,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This is the **Foundation Release** - the crate reserves the name on crates.io and establishes the architecture, but contains no runnable code. The core ABI types are defined and documented, ready for Phase 1 implementation.
 
-[Unreleased]: https://github.com/sokr-rs/sokr/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/sokr-rs/sokr/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/sokr-rs/sokr/releases/tag/v0.1.1
 [0.1.0]: https://github.com/sokr-rs/sokr/releases/tag/v0.1.0
