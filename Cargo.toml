@@ -1,12 +1,5 @@
-[workspace]
-members = [
-    "crates/sokr-core",
-    "crates/sokr-cpu",
-    "crates/sokr-dispatch-first",
-]
-resolver = "2"
-
-[workspace.package]
+[package]
+name = "sokr"
 version = "0.1.1"
 authors = ["The SOKR Project"]
 edition = "2021"
@@ -17,16 +10,24 @@ documentation = "https://docs.rs/sokr"
 keywords = ["compute", "runtime", "kernel", "gpu", "agnostic"]
 categories = ["hardware-support", "no-std"]
 rust-version = "1.78"
+description = "SOKR core — immutable C ABI surface for substrate plugins"
+readme = "README.md"
 
-[workspace.dependencies]
-# Core has no dependencies - keep it pure
-# Substrate plugins will add their hardware-specific deps here
+[lib]
+name = "sokr"
+crate-type = ["rlib"]
 
-[workspace.lints.rust]
+[features]
+default = []
+ffi = []
+
+[dependencies]
+
+[lints.rust]
 unsafe_code = "deny"
 missing_docs = "warn"
 
-[workspace.lints.clippy]
+[lints.clippy]
 all = "warn"
 pedantic = "warn"
 nursery = "warn"

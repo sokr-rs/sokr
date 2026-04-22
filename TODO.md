@@ -29,16 +29,16 @@ and hardware that does not yet exist.
 - [x] 🔴 GitHub org claimed: `sokr-rs`
 - [x] 🔴 GitHub repo made public: `sokr-rs/sokr`
 - [x] 🔴 CONTRIBUTING.md complete
-- [ ] 🔴 Repo restructure: flatten from workspace to single crate
-  - [ ] Move `crates/sokr-core/src/` → `src/`
-  - [ ] Move `crates/sokr-core/Cargo.toml` → root `Cargo.toml`, rename to `sokr`
-  - [ ] Move `crates/sokr-core/cbindgen.toml` → root `cbindgen.toml`
-  - [ ] Remove `crates/sokr-cpu/`, `crates/sokr-dispatch-first/` — move to `sokr-plugins`
-  - [ ] Remove workspace `[workspace]` section from root `Cargo.toml`
-  - [ ] Verify `cargo check` passes on flattened structure
-  - [ ] Verify `cargo test` passes on flattened structure
-  - [ ] Update CI workflow — remove `--workspace` flags
-  - [ ] Publish `sokr` v0.1.1 from new structure
+- [x] 🔴 Repo restructure: flatten from workspace to single crate
+  - [x] Move `crates/sokr-core/src/` → `src/`
+  - [x] Move `crates/sokr-core/Cargo.toml` → root `Cargo.toml`, rename to `sokr`
+  - [x] Move `crates/sokr-core/cbindgen.toml` → root `cbindgen.toml`
+  - [x] Remove `crates/sokr-cpu/`, `crates/sokr-dispatch-first/` — move to `sokr-plugins` repo
+  - [x] Remove workspace `[workspace]` section from root `Cargo.toml`
+  - [x] Verify `cargo check` passes on flattened structure
+  - [x] Verify `cargo test` passes on flattened structure
+  - [x] Update CI workflow — remove `--workspace` flags
+  - [x] Publish `sokr` v0.1.1 from new structure
 
 ### 0.2 Design Documents
 - [x] 🔴 Core philosophy documented
