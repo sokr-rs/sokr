@@ -105,7 +105,7 @@ Plugins: [github.com/sokr-rs/sokr-plugins](https://github.com/sokr-rs/sokr-plugi
 
 ## Status
 
-`v0.1.x` — foundation phase. Core ABI defined. No runnable code yet.
+`v0.1.x` — foundation phase. Core ABI defined, validation implemented. FFI stubs return `NoCapableSubstrate` pending Phase 1.3 substrate routing.
 
 See [TODO.md](TODO.md) for the roadmap and
 [ARCHITECTURE.md](ARCHITECTURE.md) for the design.
