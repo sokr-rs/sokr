@@ -66,9 +66,9 @@ and hardware that does not yet exist.
 > The immutable core exists. ABI is complete. Version handshake works.
 
 ### 1.1 Repo Restructure
-- [ ] 🔴 Complete single-crate flatten (see 0.1 Repo restructure above)
-- [ ] 🔴 Verify `sokr-plugins` repo exists and `sokr-cpu` moved there
-- [ ] 🔴 Update all internal references from `sokr-core` → `sokr`
+- [x] 🔴 Complete single-crate flatten (see 0.1 Repo restructure above)
+- [x] 🔴 Verify `sokr-plugins` repo exists and `sokr-cpu` moved there
+- [x] 🔴 Update all internal references from `sokr-core` → `sokr`
 
 ### 1.2 Core ABI (`src/`)
 - [x] 🔴 `src/types.rs` — all C ABI struct and enum definitions
