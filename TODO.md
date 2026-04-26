@@ -89,11 +89,11 @@ and hardware that does not yet exist.
   - [x] Return `completion_token` on success
   - [x] Unit test: dispatch to registered plugin succeeds
   - [x] Unit test: dispatch to unregistered plugin fails explicitly
-- [ ] 🔴 Implement `sokr_completion()` — poll completion token
-  - [ ] Look up completion token in active dispatch table
-  - [ ] Return `Pending`, `Complete`, or `Failed`
-  - [ ] Unit test: completion after dispatch returns `Complete`
-  - [ ] Unit test: unknown token returns `Failed`
+- [x] 🔴 Implement `sokr_completion()` — poll completion token
+  - [x] Route through registered plugins; first recognizing the token wins
+  - [x] Return `Pending`, `Complete`, or `Failed` (via signal)
+  - [x] Unit test: completion routes to plugin recognizing token, returns `Complete`
+  - [x] Unit test: unknown token returns `NotFound` with `Failed` signal
 - [ ] 🔴 `cbindgen` header generation
   - [ ] Add `cargo xtask generate-headers` command
   - [ ] Verify `sokr.h` compiles cleanly with `gcc -Wall -Wextra`

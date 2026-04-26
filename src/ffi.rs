@@ -208,8 +208,8 @@ pub unsafe extern "C" fn sokr_dispatch(
 /// - `signal`: Pointer to store the completion signal
 ///
 /// # Returns
-/// - `SokrResult::Ok` on success (when routed to a substrate)
-/// - `SokrResult::NoCapableSubstrate` if no substrate is registered (current stub behavior)
+/// - `SokrResult::Ok` on success (a substrate recognized the token)
+/// - `SokrResult::NotFound` if no registered substrate recognizes the token
 /// - `SokrResult::InvalidInput` if either pointer is null or token handle is 0 (invalid)
 ///
 /// # Signal Contract (Failure Path)
@@ -238,9 +238,21 @@ pub unsafe extern "C" fn sokr_completion(
         return SokrResult::InvalidInput;
     }
 
-    // TODO: Route to registered substrates and check completion (Phase 1.3)
-    // For now, return NoCapableSubstrate since no substrates are registered yet
-    let result = SokrResult::NoCapableSubstrate;
+    // Route to registered substrates; first plugin recognizing the token wins.
+    // SAFETY: Single-threaded access invariant for Phase 1.2.
+    for plugin in unsafe { &*REGISTRY.get() }.iter() {
+        let plugin_result = (plugin.completion_fn)(query, signal);
+        if plugin_result == SokrResult::Ok {
+            return SokrResult::Ok;
+        }
+        // Defensively reset signal between attempts so a later plugin
+        // cannot observe or accidentally propagate a prior plugin's partial write.
+        unsafe {
+            (*signal) = SokrCompletionSignal::Failed;
+        }
+    }
+
+    let result = SokrResult::NotFound;
     unsafe {
         (*signal) = SokrCompletionSignal::Failed;
     }
@@ -508,7 +520,8 @@ mod tests {
     }
 
     #[test]
-    fn completion_populates_signal_failed_on_error() {
+    fn completion_empty_registry_returns_not_found() {
+        reset_registry();
         let query = SokrCompletionQuery {
             completion_token: crate::types::SokrCompletionToken { handle: 1 },
             timeout_ns: 0,
@@ -518,7 +531,7 @@ mod tests {
         let mut signal = SokrCompletionSignal::Complete;
 
         let result = unsafe { sokr_completion(&query, &mut signal) };
-        assert_eq!(result, SokrResult::NoCapableSubstrate);
+        assert_eq!(result, SokrResult::NotFound);
         // Failure path writes Failed, not Pending — Pending implies the
         // computation was accepted and is still running.
         assert_eq!(signal, SokrCompletionSignal::Failed);
@@ -531,6 +544,87 @@ mod tests {
         assert_eq!(SokrCompletionSignal::Complete as u32, 1);
         assert_eq!(SokrCompletionSignal::Failed as u32, 2);
         assert_eq!(SokrCompletionSignal::TimedOut as u32, 3);
+    }
+
+    // ── Completion routing tests ─────────────────────────────
+
+    extern "C" fn test_completion(
+        query: *const SokrCompletionQuery,
+        signal: *mut SokrCompletionSignal,
+    ) -> SokrResult {
+        unsafe {
+            if (*query).completion_token.handle == 123 {
+                (*signal) = SokrCompletionSignal::Complete;
+                SokrResult::Ok
+            } else {
+                SokrResult::NotFound
+            }
+        }
+    }
+
+    fn completion_plugin(id: u64) -> crate::types::SokrSubstratePlugin {
+        extern "C" fn dummy_capability(
+            _version: *const SokrVersion,
+            _query: *const SokrCapabilityQuery,
+            _response: *mut SokrCapabilityResponse,
+        ) -> SokrResult {
+            SokrResult::Ok
+        }
+        extern "C" fn dummy_dispatch(
+            _request: *const SokrDispatchRequest,
+            _response: *mut SokrDispatchResponse,
+        ) -> SokrResult {
+            SokrResult::Ok
+        }
+        extern "C" fn dummy_destroy() {}
+
+        crate::types::SokrSubstratePlugin {
+            version: SokrVersion::CURRENT,
+            capability_fn: dummy_capability,
+            dispatch_fn: dummy_dispatch,
+            completion_fn: test_completion,
+            destroy_fn: dummy_destroy,
+            substrate_id: id,
+            padding: [0; 8],
+        }
+    }
+
+    #[test]
+    fn completion_routes_to_plugin_recognizing_token() {
+        reset_registry();
+        unsafe {
+            (*REGISTRY.get()).register(completion_plugin(1));
+        }
+
+        let query = SokrCompletionQuery {
+            completion_token: crate::types::SokrCompletionToken { handle: 123 },
+            timeout_ns: 0,
+            padding: [0; 8],
+        };
+        let mut signal = SokrCompletionSignal::Pending;
+
+        let result = unsafe { sokr_completion(&query, &mut signal) };
+        assert_eq!(result, SokrResult::Ok);
+        assert_eq!(signal, SokrCompletionSignal::Complete);
+    }
+
+    #[test]
+    fn completion_unknown_token_returns_not_found() {
+        reset_registry();
+        unsafe {
+            (*REGISTRY.get()).register(completion_plugin(1));
+        }
+
+        let query = SokrCompletionQuery {
+            completion_token: crate::types::SokrCompletionToken { handle: 999 },
+            timeout_ns: 0,
+            padding: [0; 8],
+        };
+        let mut signal = SokrCompletionSignal::Pending;
+
+        let result = unsafe { sokr_completion(&query, &mut signal) };
+        assert_eq!(result, SokrResult::NotFound);
+        assert_eq!(signal, SokrCompletionSignal::Failed);
     }
 
     // ── Capability routing tests ───────────────────────────────
