@@ -5,17 +5,36 @@
 
 #![allow(unsafe_code)]
 
+use core::cell::UnsafeCell;
+
 use crate::registry::Registry;
 use crate::types::{
     SokrCapabilityQuery, SokrCapabilityResponse, SokrCompletionQuery, SokrCompletionSignal,
     SokrDispatchRequest, SokrDispatchResponse, SokrResult, SokrVersion,
 };
 
-/// Global plugin registry.
+/// Wrapper to allow `Sync` on `UnsafeCell<Registry>`.
 ///
-/// Thread-safety is not yet implemented (Phase 1.3). All accesses
-/// from FFI must be `unsafe`.
-static mut REGISTRY: Registry = Registry::new();
+/// # Safety
+/// `Sync` is sound only because we guarantee single-threaded access
+/// during Phase 1.2. Phase 1.3 will replace this with a proper mutex.
+struct SyncRegistry(UnsafeCell<Registry>);
+
+// SAFETY: Single-threaded access invariant for Phase 1.2.
+// All FFI entry points document their `unsafe` contract.
+unsafe impl Sync for SyncRegistry {}
+
+impl SyncRegistry {
+    const fn new() -> Self {
+        Self(UnsafeCell::new(Registry::new()))
+    }
+
+    const fn get(&self) -> *mut Registry {
+        self.0.get()
+    }
+}
+
+static REGISTRY: SyncRegistry = SyncRegistry::new();
 
 static SOKR_VERSION_STATIC: SokrVersion = SokrVersion::CURRENT;
 
@@ -68,11 +87,12 @@ pub unsafe extern "C" fn sokr_check_version(
 /// # Returns
 /// - `SokrResult::Ok` on success
 /// - `SokrResult::InvalidInput` if either pointer is null or IR data length is zero
-/// - `SokrResult::NoCapableSubstrate` if no substrate can fulfill the computation
+/// - `SokrResult::CapabilityDenied` if no registered substrate accepts the computation
 ///
 /// # Response Contract (Failure Path)
-/// On any non-`Ok` result, the response is fully zeroed (`result`, `padding`,
-/// `substrate_id`, `estimated_latency_ns`). Callers must not read uninitialized fields.
+/// On `InvalidInput` or `CapabilityDenied`, the response is fully zeroed
+/// (`result`, `padding`, `substrate_id`, `estimated_latency_ns`).
+/// Callers must not read uninitialized fields.
 ///
 /// # Safety
 /// Pointers must be properly aligned if non-null. Null pointers return `InvalidInput`.
@@ -96,11 +116,18 @@ pub unsafe extern "C" fn sokr_capability(
     }
 
     // Route to registered substrates; first accepting plugin wins.
-    for plugin in unsafe { &*core::ptr::addr_of!(REGISTRY) }.iter() {
+    // SAFETY: We hold exclusive access assumption (Phase 1.2, single-threaded).
+    for plugin in unsafe { &*REGISTRY.get() }.iter() {
         let plugin_result =
             (plugin.capability_fn)(core::ptr::addr_of!(SOKR_VERSION_STATIC), query, response);
         if plugin_result == SokrResult::Ok {
             return SokrResult::Ok;
+        }
+        // Defensively zero between attempts so a later plugin cannot observe
+        // or accidentally propagate a prior plugin's partial write.
+        unsafe {
+            (*response).substrate_id = 0;
+            (*response).estimated_latency_ns = 0;
         }
     }
 
@@ -500,11 +527,9 @@ mod tests {
 
     // ── Capability routing tests ───────────────────────────────
 
-    #[cfg(test)]
     fn reset_registry() {
-        unsafe {
-            REGISTRY = Registry::new();
-        }
+        // SAFETY: Tests are run single-threaded (or hold implicit lock).
+        unsafe { *REGISTRY.get() = Registry::new() };
     }
 
     extern "C" fn accepting_capability(
@@ -583,7 +608,7 @@ mod tests {
     fn capability_routes_to_accepting_plugin() {
         reset_registry();
         unsafe {
-            REGISTRY.register(capability_plugin(accepting_capability));
+            (*REGISTRY.get()).register(capability_plugin(accepting_capability));
         }
 
         let query = SokrCapabilityQuery {
@@ -610,7 +635,7 @@ mod tests {
     fn capability_skips_rejecting_plugin() {
         reset_registry();
         unsafe {
-            REGISTRY.register(capability_plugin(rejecting_capability));
+            (*REGISTRY.get()).register(capability_plugin(rejecting_capability));
         }
 
         let query = SokrCapabilityQuery {

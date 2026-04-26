@@ -62,9 +62,8 @@ impl Registry {
             }
         }
 
-        // All slots occupied — this path is only reachable when substrates
-        // are modified concurrently (not yet supported) or if is_full() desyncs.
-        unreachable!("registry not full but no empty slot found")
+        // All slots occupied despite is_full() check — logically unreachable.
+        unreachable!("is_full() returned false but no empty slot found")
     }
 
     /// Returns a reference to the substrate at the given index.
