@@ -5,10 +5,17 @@
 
 #![allow(unsafe_code)]
 
+use crate::registry::Registry;
 use crate::types::{
     SokrCapabilityQuery, SokrCapabilityResponse, SokrCompletionQuery, SokrCompletionSignal,
     SokrDispatchRequest, SokrDispatchResponse, SokrResult, SokrVersion,
 };
+
+/// Global plugin registry.
+///
+/// Thread-safety is not yet implemented (Phase 1.3). All accesses
+/// from FFI must be `unsafe`.
+static mut REGISTRY: Registry = Registry::new();
 
 static SOKR_VERSION_STATIC: SokrVersion = SokrVersion::CURRENT;
 
@@ -88,9 +95,16 @@ pub unsafe extern "C" fn sokr_capability(
         return SokrResult::InvalidInput;
     }
 
-    // TODO: Route to registered substrates (Phase 1.3)
-    // For now, return NoCapableSubstrate since no substrates are registered yet
-    let result = SokrResult::NoCapableSubstrate;
+    // Route to registered substrates; first accepting plugin wins.
+    for plugin in unsafe { &*core::ptr::addr_of!(REGISTRY) }.iter() {
+        let plugin_result =
+            (plugin.capability_fn)(core::ptr::addr_of!(SOKR_VERSION_STATIC), query, response);
+        if plugin_result == SokrResult::Ok {
+            return SokrResult::Ok;
+        }
+    }
+
+    let result = SokrResult::CapabilityDenied;
     unsafe {
         (*response).result = result;
         (*response).padding = 0;
@@ -292,7 +306,8 @@ mod tests {
     }
 
     #[test]
-    fn capability_populates_response_result() {
+    fn capability_empty_registry_returns_capability_denied() {
+        reset_registry();
         let query = SokrCapabilityQuery {
             computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
             ir_format: [0].as_ptr().cast(),
@@ -308,8 +323,8 @@ mod tests {
         };
 
         let result = unsafe { sokr_capability(&query, &mut response) };
-        assert_eq!(result, SokrResult::NoCapableSubstrate);
-        assert_eq!(response.result, SokrResult::NoCapableSubstrate);
+        assert_eq!(result, SokrResult::CapabilityDenied);
+        assert_eq!(response.result, SokrResult::CapabilityDenied);
     }
 
     #[test]
@@ -481,5 +496,140 @@ mod tests {
         assert_eq!(SokrCompletionSignal::Complete as u32, 1);
         assert_eq!(SokrCompletionSignal::Failed as u32, 2);
         assert_eq!(SokrCompletionSignal::TimedOut as u32, 3);
+    }
+
+    // ── Capability routing tests ───────────────────────────────
+
+    #[cfg(test)]
+    fn reset_registry() {
+        unsafe {
+            REGISTRY = Registry::new();
+        }
+    }
+
+    extern "C" fn accepting_capability(
+        _version: *const SokrVersion,
+        _query: *const SokrCapabilityQuery,
+        response: *mut SokrCapabilityResponse,
+    ) -> SokrResult {
+        unsafe {
+            (*response).result = SokrResult::Ok;
+            (*response).padding = 0;
+            (*response).substrate_id = 42;
+            (*response).estimated_latency_ns = 1_000;
+        }
+        SokrResult::Ok
+    }
+
+    extern "C" fn rejecting_capability(
+        _version: *const SokrVersion,
+        _query: *const SokrCapabilityQuery,
+        _response: *mut SokrCapabilityResponse,
+    ) -> SokrResult {
+        SokrResult::CapabilityDenied
+    }
+
+    fn capability_plugin(
+        cap_fn: crate::types::SokrCapabilityFn,
+    ) -> crate::types::SokrSubstratePlugin {
+        extern "C" fn dummy_dispatch(
+            _request: *const SokrDispatchRequest,
+            _response: *mut SokrDispatchResponse,
+        ) -> SokrResult {
+            SokrResult::Ok
+        }
+        extern "C" fn dummy_completion(
+            _query: *const SokrCompletionQuery,
+            _signal: *mut SokrCompletionSignal,
+        ) -> SokrResult {
+            SokrResult::Ok
+        }
+        extern "C" fn dummy_destroy() {}
+
+        crate::types::SokrSubstratePlugin {
+            version: SokrVersion::CURRENT,
+            capability_fn: cap_fn,
+            dispatch_fn: dummy_dispatch,
+            completion_fn: dummy_completion,
+            destroy_fn: dummy_destroy,
+            padding: [0; 16],
+        }
+    }
+
+    #[test]
+    fn capability_empty_registry_denies() {
+        reset_registry();
+        let query = SokrCapabilityQuery {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            ir_format: b"spirv\0".as_ptr().cast(),
+            ir_data_ptr: b"data".as_ptr().cast(),
+            ir_data_len: 4,
+            padding: [0; 8],
+        };
+        let mut response = SokrCapabilityResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            substrate_id: 99,
+            estimated_latency_ns: 99,
+        };
+
+        let result = unsafe { sokr_capability(&query, &mut response) };
+        assert_eq!(result, SokrResult::CapabilityDenied);
+        assert_eq!(response.substrate_id, 0);
+        assert_eq!(response.estimated_latency_ns, 0);
+    }
+
+    #[test]
+    fn capability_routes_to_accepting_plugin() {
+        reset_registry();
+        unsafe {
+            REGISTRY.register(capability_plugin(accepting_capability));
+        }
+
+        let query = SokrCapabilityQuery {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            ir_format: b"spirv\0".as_ptr().cast(),
+            ir_data_ptr: b"data".as_ptr().cast(),
+            ir_data_len: 4,
+            padding: [0; 8],
+        };
+        let mut response = SokrCapabilityResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            substrate_id: 0,
+            estimated_latency_ns: 0,
+        };
+
+        let result = unsafe { sokr_capability(&query, &mut response) };
+        assert_eq!(result, SokrResult::Ok);
+        assert_eq!(response.substrate_id, 42);
+        assert_eq!(response.estimated_latency_ns, 1_000);
+    }
+
+    #[test]
+    fn capability_skips_rejecting_plugin() {
+        reset_registry();
+        unsafe {
+            REGISTRY.register(capability_plugin(rejecting_capability));
+        }
+
+        let query = SokrCapabilityQuery {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            ir_format: b"spirv\0".as_ptr().cast(),
+            ir_data_ptr: b"data".as_ptr().cast(),
+            ir_data_len: 4,
+            padding: [0; 8],
+        };
+        let mut response = SokrCapabilityResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            substrate_id: 77,
+            estimated_latency_ns: 77,
+        };
+
+        let result = unsafe { sokr_capability(&query, &mut response) };
+        assert_eq!(result, SokrResult::CapabilityDenied);
+        assert_eq!(response.substrate_id, 0);
+        assert_eq!(response.estimated_latency_ns, 0);
     }
 }

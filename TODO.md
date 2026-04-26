@@ -78,11 +78,11 @@ and hardware that does not yet exist.
 - [x] 🔴 `SokrResult` — 10 variants + `is_ok()` / `is_err()`
 - [x] 🔴 All query/request/response/signal structs defined
 - [x] 🔴 `SokrSubstratePlugin` vtable defined
-- [ ] 🔴 Implement `sokr_capability()` — route to registered substrate
-  - [ ] Route to registered substrate plugin matching `substrate_id`
-  - [ ] Return `CapabilityDenied` if no matching substrate registered
-  - [ ] Unit test: routes to correct plugin
-  - [ ] Unit test: unknown substrate returns `CapabilityDenied`
+- [x] 🔴 Implement `sokr_capability()` — route to registered substrate
+  - [x] Route to all registered substrate plugins; first accepting plugin wins
+  - [x] Return `CapabilityDenied` if no matching substrate registered
+  - [x] Unit test: routes to correct plugin
+  - [x] Unit test: unknown substrate returns `CapabilityDenied`
 - [ ] 🔴 Implement `sokr_dispatch()` — route to substrate and dispatch
   - [ ] Validate all dispatch request fields before routing
   - [ ] Route to substrate plugin
