@@ -2,6 +2,8 @@
 # Run: cbindgen --crate sokr --output sokr.h
 
 language = "C"
+pragma_once = true
+cpp_compat = true
 
 [parse]
 parse_deps = false
@@ -23,23 +25,19 @@ include = [
     "SokrDispatchFn",
     "SokrCompletionFn",
     "SokrDestroyFn",
+    "SOKR_VERSION_CURRENT",
 ]
 
 [fn]
-rename_types = "SnakeCase"
-include = [
-    "sokr_version",
-    "sokr_check_version",
-    "sokr_capability",
-    "sokr_dispatch",
-    "sokr_completion",
-]
+prefix = ""
+postfix = ""
 
 [struct]
-rename_types = "SnakeCase"
+rename_fields = "SnakeCase"
 
 [enum]
-rename_types = "SnakeCase"
+prefix_with_name = true
+rename_variants = "ScreamingSnakeCase"
 
 [defines]
 "feature = ffi" = "SOKR_FFI_ENABLED"

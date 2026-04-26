@@ -1,10 +1,12 @@
 # Rust / Cargo
 /target
+xtask/target
 Cargo.lock
 **/*.rs.bk
 *.rlib
 *.rmeta
 *.d
+*.o
 *.so
 *.dll
 *.dylib

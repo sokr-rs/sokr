@@ -94,11 +94,11 @@ and hardware that does not yet exist.
   - [x] Return `Pending`, `Complete`, or `Failed` (via signal)
   - [x] Unit test: completion routes to plugin recognizing token, returns `Complete`
   - [x] Unit test: unknown token returns `NotFound` with `Failed` signal
-- [ ] 🔴 `cbindgen` header generation
-  - [ ] Add `cargo xtask generate-headers` command
-  - [ ] Verify `sokr.h` compiles cleanly with `gcc -Wall -Wextra`
-  - [ ] Verify `sokr.h` compiles cleanly with `clang -Wall -Wextra`
-  - [ ] Commit generated `include/sokr.h` to repo
+- [x] 🔴 `cbindgen` header generation
+  - [x] Add `cargo xtask generate-headers` command
+  - [x] Verify `sokr.h` compiles cleanly with `gcc -Wall -Wextra`
+  - [x] Verify `sokr.h` compiles cleanly with `clang -Wall -Wextra`
+  - [x] Commit generated `include/sokr.h` to repo
 
 ### 1.3 Plugin Registry
 - [ ] 🔴 `sokr_register_substrate()` — register plugin with version check

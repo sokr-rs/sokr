@@ -73,6 +73,18 @@ impl SokrVersion {
     }
 }
 
+/// Static export of current SOKR version for C FFI.
+///
+/// This is exported as `extern const` (valid at file scope in C),
+/// unlike the `SokrVersion_CURRENT` macro which uses compound literals.
+#[allow(unsafe_code)]
+#[no_mangle]
+pub static SOKR_VERSION_CURRENT: SokrVersion = SokrVersion {
+    major: 0,
+    minor: 1,
+    patch: 1,
+};
+
 /// Result codes for SOKR operations.
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
