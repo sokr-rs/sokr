@@ -255,8 +255,10 @@ pub struct SokrSubstratePlugin {
     pub completion_fn: SokrCompletionFn,
     /// Cleanup function called on deregistration.
     pub destroy_fn: SokrDestroyFn,
+    /// Unique identifier for this substrate plugin.
+    pub substrate_id: u64,
     /// Reserved padding for ABI alignment.
-    pub padding: [u8; 16],
+    pub padding: [u8; 8],
 }
 
 #[cfg(test)]

@@ -182,8 +182,16 @@ pub unsafe extern "C" fn sokr_dispatch(
         return SokrResult::InvalidInput;
     }
 
-    // TODO: Route to registered substrates and dispatch (Phase 1.3)
-    // For now, return NoCapableSubstrate since no substrates are registered yet
+    // Route to registered substrate by substrate_id.
+    // SAFETY: Single-threaded access invariant for Phase 1.2.
+    let registry = unsafe { &*REGISTRY.get() };
+    if let Some(plugin) = registry.find_by_substrate_id(request_ref.substrate_id) {
+        let dispatch_result = (plugin.dispatch_fn)(request, response);
+        if dispatch_result == SokrResult::Ok {
+            return SokrResult::Ok;
+        }
+    }
+
     let result = SokrResult::NoCapableSubstrate;
     unsafe {
         (*response).result = result;
@@ -577,7 +585,8 @@ mod tests {
             dispatch_fn: dummy_dispatch,
             completion_fn: dummy_completion,
             destroy_fn: dummy_destroy,
-            padding: [0; 16],
+            substrate_id: 42,
+            padding: [0; 8],
         }
     }
 
@@ -656,5 +665,137 @@ mod tests {
         assert_eq!(result, SokrResult::CapabilityDenied);
         assert_eq!(response.substrate_id, 0);
         assert_eq!(response.estimated_latency_ns, 0);
+    }
+
+    // ── Dispatch routing tests ─────────────────────────────────
+
+    extern "C" fn accepting_dispatch(
+        _request: *const SokrDispatchRequest,
+        response: *mut SokrDispatchResponse,
+    ) -> SokrResult {
+        unsafe {
+            (*response).result = SokrResult::Ok;
+            (*response).padding = 0;
+            (*response).completion_token.handle = 123;
+        }
+        SokrResult::Ok
+    }
+
+    extern "C" fn rejecting_dispatch(
+        _request: *const SokrDispatchRequest,
+        _response: *mut SokrDispatchResponse,
+    ) -> SokrResult {
+        SokrResult::NoCapableSubstrate
+    }
+
+    fn dispatch_plugin(
+        id: u64,
+        dispatch_fn: crate::types::SokrDispatchFn,
+    ) -> crate::types::SokrSubstratePlugin {
+        extern "C" fn dummy_capability(
+            _version: *const SokrVersion,
+            _query: *const SokrCapabilityQuery,
+            _response: *mut SokrCapabilityResponse,
+        ) -> SokrResult {
+            SokrResult::Ok
+        }
+        extern "C" fn dummy_completion(
+            _query: *const SokrCompletionQuery,
+            _signal: *mut SokrCompletionSignal,
+        ) -> SokrResult {
+            SokrResult::Ok
+        }
+        extern "C" fn dummy_destroy() {}
+
+        crate::types::SokrSubstratePlugin {
+            version: SokrVersion::CURRENT,
+            capability_fn: dummy_capability,
+            dispatch_fn,
+            completion_fn: dummy_completion,
+            destroy_fn: dummy_destroy,
+            substrate_id: id,
+            padding: [0; 8],
+        }
+    }
+
+    #[test]
+    fn dispatch_routes_to_registered_plugin() {
+        reset_registry();
+        unsafe {
+            (*REGISTRY.get()).register(dispatch_plugin(7, accepting_dispatch));
+        }
+
+        let request = SokrDispatchRequest {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            substrate_id: 7,
+            ir_data_ptr: b"ir".as_ptr().cast(),
+            ir_data_len: 2,
+            params_ptr: core::ptr::null(),
+            params_len: 0,
+            padding: [0; 16],
+        };
+        let mut response = SokrDispatchResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            completion_token: crate::types::SokrCompletionToken { handle: 0 },
+        };
+
+        let result = unsafe { sokr_dispatch(&request, &mut response) };
+        assert_eq!(result, SokrResult::Ok);
+        assert_eq!(response.completion_token.handle, 123);
+    }
+
+    #[test]
+    fn dispatch_unregistered_plugin_fails() {
+        reset_registry();
+        unsafe {
+            (*REGISTRY.get()).register(dispatch_plugin(7, accepting_dispatch));
+        }
+
+        let request = SokrDispatchRequest {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            substrate_id: 99, // not registered
+            ir_data_ptr: b"ir".as_ptr().cast(),
+            ir_data_len: 2,
+            params_ptr: core::ptr::null(),
+            params_len: 0,
+            padding: [0; 16],
+        };
+        let mut response = SokrDispatchResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            completion_token: crate::types::SokrCompletionToken { handle: 77 },
+        };
+
+        let result = unsafe { sokr_dispatch(&request, &mut response) };
+        assert_eq!(result, SokrResult::NoCapableSubstrate);
+        assert_eq!(response.completion_token.handle, 0);
+    }
+
+    #[test]
+    fn dispatch_rejecting_plugin_returns_no_capable() {
+        reset_registry();
+        unsafe {
+            (*REGISTRY.get()).register(dispatch_plugin(7, rejecting_dispatch));
+        }
+
+        let request = SokrDispatchRequest {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            substrate_id: 7,
+            ir_data_ptr: b"ir".as_ptr().cast(),
+            ir_data_len: 2,
+            params_ptr: core::ptr::null(),
+            params_len: 0,
+            padding: [0; 16],
+        };
+        let mut response = SokrDispatchResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            completion_token: crate::types::SokrCompletionToken { handle: 88 },
+        };
+
+        let result = unsafe { sokr_dispatch(&request, &mut response) };
+        assert_eq!(result, SokrResult::NoCapableSubstrate);
+        assert_eq!(response.completion_token.handle, 0);
     }
 }

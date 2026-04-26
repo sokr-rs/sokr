@@ -76,6 +76,12 @@ impl Registry {
     pub fn iter(&self) -> impl Iterator<Item = &SokrSubstratePlugin> {
         self.substrates.iter().filter_map(|s| s.as_ref())
     }
+
+    /// Finds a substrate by its unique identifier.
+    #[must_use]
+    pub fn find_by_substrate_id(&self, id: u64) -> Option<&SokrSubstratePlugin> {
+        self.iter().find(|p| p.substrate_id == id)
+    }
 }
 
 impl Default for Registry {
@@ -120,7 +126,8 @@ mod tests {
             dispatch_fn: dummy_dispatch,
             completion_fn: dummy_completion,
             destroy_fn: dummy_destroy,
-            padding: [0; 16],
+            substrate_id: 1,
+            padding: [0; 8],
         }
     }
 

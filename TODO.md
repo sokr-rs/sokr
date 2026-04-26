@@ -83,12 +83,12 @@ and hardware that does not yet exist.
   - [x] Return `CapabilityDenied` if no matching substrate registered
   - [x] Unit test: routes to correct plugin
   - [x] Unit test: unknown substrate returns `CapabilityDenied`
-- [ ] 🔴 Implement `sokr_dispatch()` — route to substrate and dispatch
-  - [ ] Validate all dispatch request fields before routing
-  - [ ] Route to substrate plugin
-  - [ ] Return `completion_token` on success
-  - [ ] Unit test: dispatch to registered plugin succeeds
-  - [ ] Unit test: dispatch to unregistered plugin fails explicitly
+- [x] 🔴 Implement `sokr_dispatch()` — route to substrate and dispatch
+  - [x] Validate all dispatch request fields before routing
+  - [x] Route to substrate plugin by `substrate_id`
+  - [x] Return `completion_token` on success
+  - [x] Unit test: dispatch to registered plugin succeeds
+  - [x] Unit test: dispatch to unregistered plugin fails explicitly
 - [ ] 🔴 Implement `sokr_completion()` — poll completion token
   - [ ] Look up completion token in active dispatch table
   - [ ] Return `Pending`, `Complete`, or `Failed`
