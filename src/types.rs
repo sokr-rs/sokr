@@ -221,6 +221,13 @@ pub enum SokrCompletionSignal {
 }
 
 /// Capability query function pointer type.
+///
+/// # Pointer contract
+/// All pointers are valid and non-null for the duration of the call.
+/// Implementations MUST NOT retain any pointer past return.
+/// Return `SokrResult::CapabilityDenied` to disclaim the computation
+/// without claiming ownership; any other non-`Ok` result is propagated
+/// to the caller as a hard failure.
 pub type SokrCapabilityFn = extern "C" fn(
     version: *const SokrVersion,
     query: *const SokrCapabilityQuery,
@@ -228,12 +235,25 @@ pub type SokrCapabilityFn = extern "C" fn(
 ) -> SokrResult;
 
 /// Dispatch function pointer type.
+///
+/// # Pointer contract
+/// All pointers are valid and non-null for the duration of the call.
+/// Implementations MUST NOT retain any pointer past return.
+/// On non-`Ok` return the core zeroes `response`; any error is propagated
+/// verbatim to the caller.
 pub type SokrDispatchFn = extern "C" fn(
     request: *const SokrDispatchRequest,
     response: *mut SokrDispatchResponse,
 ) -> SokrResult;
 
 /// Completion query function pointer type.
+///
+/// # Pointer contract
+/// All pointers are valid and non-null for the duration of the call.
+/// Implementations MUST NOT retain any pointer past return.
+/// Return `SokrResult::NotFound` to disclaim the token without claiming
+/// ownership; any other non-`Ok` result is propagated to the caller as
+/// a hard failure and `signal` is set to `SokrCompletionSignal::Failed`.
 pub type SokrCompletionFn = extern "C" fn(
     query: *const SokrCompletionQuery,
     signal: *mut SokrCompletionSignal,

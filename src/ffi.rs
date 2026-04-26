@@ -120,11 +120,23 @@ pub unsafe extern "C" fn sokr_capability(
     for plugin in unsafe { &*REGISTRY.get() }.iter() {
         let plugin_result =
             (plugin.capability_fn)(core::ptr::addr_of!(SOKR_VERSION_STATIC), query, response);
-        if plugin_result == SokrResult::Ok {
-            return SokrResult::Ok;
+        match plugin_result {
+            SokrResult::Ok => return SokrResult::Ok,
+            // CapabilityDenied = plugin disclaims this computation; try next.
+            SokrResult::CapabilityDenied => {}
+            // Any other error means the plugin owns this request but failed.
+            other => {
+                unsafe {
+                    (*response).result = other;
+                    (*response).padding = 0;
+                    (*response).substrate_id = 0;
+                    (*response).estimated_latency_ns = 0;
+                }
+                return other;
+            }
         }
-        // Defensively zero between attempts so a later plugin cannot observe
-        // or accidentally propagate a prior plugin's partial write.
+        // Defensively zero between disclaim attempts so a later plugin cannot
+        // observe or accidentally propagate a prior plugin's partial write.
         unsafe {
             (*response).substrate_id = 0;
             (*response).estimated_latency_ns = 0;
@@ -190,6 +202,14 @@ pub unsafe extern "C" fn sokr_dispatch(
         if dispatch_result == SokrResult::Ok {
             return SokrResult::Ok;
         }
+        // Plugin owns this substrate_id but failed — propagate its exact error.
+        let result = dispatch_result;
+        unsafe {
+            (*response).result = result;
+            (*response).padding = 0;
+            (*response).completion_token.handle = 0;
+        }
+        return result;
     }
 
     let result = SokrResult::NoCapableSubstrate;
@@ -213,12 +233,15 @@ pub unsafe extern "C" fn sokr_dispatch(
 /// - `SokrResult::InvalidInput` if either pointer is null or token handle is 0 (invalid)
 ///
 /// # Signal Contract (Failure Path)
-/// On any non-`Ok` result, `signal` is set to `SokrCompletionSignal::Failed`.
-/// Callers must not treat a failed query as `Pending`.
+/// On any non-`Ok` result where `signal` is non-null, `signal` is set to
+/// `SokrCompletionSignal::Failed`. Exception: when `signal` itself is null,
+/// no write occurs. Callers must not treat a failed query as `Pending`.
 ///
 /// # Timeout Behavior
 /// - `timeout_ns = 0`: Non-blocking poll, returns immediately with current status
-/// - `timeout_ns > 0`: Blocks up to specified nanoseconds (TODO: implement in Phase 1.3)
+/// - `timeout_ns > 0`: Blocks up to the specified nanoseconds per plugin attempt
+///   (TODO: implement in Phase 1.3). With N registered plugins, the worst-case
+///   wall time before returning is `N × timeout_ns`.
 ///
 /// # Safety
 /// Pointers must be properly aligned if non-null. Null pointers return `InvalidInput`.
@@ -235,6 +258,9 @@ pub unsafe extern "C" fn sokr_completion(
 
     // Validate token handle is non-zero (invalid/unset sentinel)
     if query_ref.completion_token.handle == 0 {
+        unsafe {
+            (*signal) = SokrCompletionSignal::Failed;
+        }
         return SokrResult::InvalidInput;
     }
 
@@ -242,10 +268,19 @@ pub unsafe extern "C" fn sokr_completion(
     // SAFETY: Single-threaded access invariant for Phase 1.2.
     for plugin in unsafe { &*REGISTRY.get() }.iter() {
         let plugin_result = (plugin.completion_fn)(query, signal);
-        if plugin_result == SokrResult::Ok {
-            return SokrResult::Ok;
+        match plugin_result {
+            SokrResult::Ok => return SokrResult::Ok,
+            // NotFound = plugin disclaims this token; try next.
+            SokrResult::NotFound => {}
+            // Any other error means the plugin owns this token but failed.
+            other => {
+                unsafe {
+                    (*signal) = SokrCompletionSignal::Failed;
+                }
+                return other;
+            }
         }
-        // Defensively reset signal between attempts so a later plugin
+        // Defensively reset signal between disclaim attempts so a later plugin
         // cannot observe or accidentally propagate a prior plugin's partial write.
         unsafe {
             (*signal) = SokrCompletionSignal::Failed;
@@ -625,6 +660,93 @@ mod tests {
         let result = unsafe { sokr_completion(&query, &mut signal) };
         assert_eq!(result, SokrResult::NotFound);
         assert_eq!(signal, SokrCompletionSignal::Failed);
+    }
+
+    extern "C" fn disclaiming_completion(
+        _query: *const SokrCompletionQuery,
+        _signal: *mut SokrCompletionSignal,
+    ) -> SokrResult {
+        SokrResult::NotFound
+    }
+
+    fn disclaiming_completion_plugin(id: u64) -> crate::types::SokrSubstratePlugin {
+        extern "C" fn dummy_capability(
+            _version: *const SokrVersion,
+            _query: *const SokrCapabilityQuery,
+            _response: *mut SokrCapabilityResponse,
+        ) -> SokrResult {
+            SokrResult::Ok
+        }
+        extern "C" fn dummy_dispatch(
+            _request: *const SokrDispatchRequest,
+            _response: *mut SokrDispatchResponse,
+        ) -> SokrResult {
+            SokrResult::Ok
+        }
+        extern "C" fn dummy_destroy() {}
+
+        crate::types::SokrSubstratePlugin {
+            version: SokrVersion::CURRENT,
+            capability_fn: dummy_capability,
+            dispatch_fn: dummy_dispatch,
+            completion_fn: disclaiming_completion,
+            destroy_fn: dummy_destroy,
+            substrate_id: id,
+            padding: [0; 8],
+        }
+    }
+
+    #[test]
+    fn completion_routes_past_disclaiming_plugin() {
+        reset_registry();
+        unsafe {
+            (*REGISTRY.get()).register(disclaiming_completion_plugin(1));
+            (*REGISTRY.get()).register(completion_plugin(2));
+        }
+
+        let query = SokrCompletionQuery {
+            completion_token: crate::types::SokrCompletionToken { handle: 123 },
+            timeout_ns: 0,
+            padding: [0; 8],
+        };
+        let mut signal = SokrCompletionSignal::Pending;
+
+        let result = unsafe { sokr_completion(&query, &mut signal) };
+        assert_eq!(result, SokrResult::Ok);
+        assert_eq!(signal, SokrCompletionSignal::Complete);
+    }
+
+    #[test]
+    fn dispatch_registered_plugin_error_propagates() {
+        reset_registry();
+        extern "C" fn failing_dispatch(
+            _request: *const SokrDispatchRequest,
+            _response: *mut SokrDispatchResponse,
+        ) -> SokrResult {
+            SokrResult::DispatchFailed
+        }
+        unsafe {
+            (*REGISTRY.get()).register(dispatch_plugin(7, failing_dispatch));
+        }
+
+        let request = SokrDispatchRequest {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            substrate_id: 7,
+            ir_data_ptr: b"ir".as_ptr().cast(),
+            ir_data_len: 2,
+            params_ptr: core::ptr::null(),
+            params_len: 0,
+            padding: [0; 16],
+        };
+        let mut response = SokrDispatchResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            completion_token: crate::types::SokrCompletionToken { handle: 99 },
+        };
+
+        let result = unsafe { sokr_dispatch(&request, &mut response) };
+        assert_eq!(result, SokrResult::DispatchFailed);
+        assert_eq!(response.completion_token.handle, 0);
     }
 
     // ── Capability routing tests ───────────────────────────────
