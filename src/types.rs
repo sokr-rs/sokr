@@ -45,11 +45,11 @@ pub struct SokrVersion {
 }
 
 impl SokrVersion {
-    /// Current SOKR core ABI version (0.1.1).
+    /// Current SOKR core ABI version (0.1.2).
     pub const CURRENT: Self = Self {
         major: 0,
         minor: 1,
-        patch: 1,
+        patch: 2,
     };
 
     /// Check if this plugin version is compatible with the given core version.

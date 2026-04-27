@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-04-27
+
+### Documentation
+
+- Correct comparison table: SOKR's QPU/Neuro/Photonic claim is now
+  marked "contract-ready" with footnote explaining structural vs
+  operational distinction. CUDA-Q and NIR ship working substrate
+  support that SOKR does not.
+- Relocate CLAUDE.md to `.github/` following standard convention.
+
 ## [0.1.1] - 2026-04-22
 
 ### Changed
@@ -59,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This is the **Foundation Release** - the crate reserves the name on crates.io and establishes the architecture, but contains no runnable code. The core ABI types are defined and documented, ready for Phase 1 implementation.
 
-[Unreleased]: https://github.com/sokr-rs/sokr/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/sokr-rs/sokr/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/sokr-rs/sokr/releases/tag/v0.1.2
 [0.1.1]: https://github.com/sokr-rs/sokr/releases/tag/v0.1.1
 [0.1.0]: https://github.com/sokr-rs/sokr/releases/tag/v0.1.0

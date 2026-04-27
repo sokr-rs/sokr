@@ -75,11 +75,18 @@ Every existing approach solves part of the problem:
 | CUDA-Q | C++/Python | ❌ | ❌ | ✅ QPU | ❌ NVIDIA |
 | NIR | Python | ❌ | ❌ | ✅ Neuromorphic | ✅ |
 | hetGPU | Research | ❌ | ❌ | ❌ GPU only | ✅ |
-| **SOKR** | **Rust** | **✅** | **✅** | **✅** | **✅** |
+| **SOKR** | **Rust** | **✅** | **✅** | **contract-ready**¹ | **✅** |
 
-SOKR is the only runtime that satisfies all four simultaneously:
-a sovereign, `no_std` Rust core with a stable C ABI plugin contract
-that makes no assumption about the substrate model.
+¹ *contract-ready*: the three-function ABI admits these substrates by
+design. No QPU, neuromorphic, or photonic plugin ships yet — see
+[sokr-plugins Phase 4](https://github.com/sokr-rs/sokr-plugins/blob/main/TODO.md#phase-4--future-substrates).
+CUDA-Q ships QPU support today; NIR ships neuromorphic today. SOKR's
+claim in this column is structural, not operational.
+
+SOKR is the only runtime whose core makes no assumption about the
+substrate model: a sovereign, `no_std` Rust core with a stable C ABI
+plugin contract. Whether that contract carries real workloads on
+non-GPU substrates is a question the plugin layer answers, not the core.
 
 ---
 
