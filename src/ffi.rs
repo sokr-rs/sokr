@@ -10,7 +10,7 @@ use core::cell::UnsafeCell;
 use crate::registry::Registry;
 use crate::types::{
     SokrCapabilityQuery, SokrCapabilityResponse, SokrCompletionQuery, SokrCompletionSignal,
-    SokrDispatchRequest, SokrDispatchResponse, SokrResult, SokrVersion,
+    SokrDispatchRequest, SokrDispatchResponse, SokrResult, SokrSubstratePlugin, SokrVersion,
 };
 
 /// Wrapper to allow `Sync` on `UnsafeCell<Registry>`.
@@ -76,6 +76,113 @@ pub unsafe extern "C" fn sokr_check_version(
     }
 
     compatibility
+}
+
+/// Registers a substrate plugin with the core registry.
+///
+/// # Arguments
+/// - `plugin`: Pointer to plugin vtable
+/// - `substrate_id_out`: Output pointer for assigned non-zero substrate ID
+///
+/// # Returns
+/// - `SokrResult::Ok` on success
+/// - `SokrResult::InvalidInput` if pointers are null
+/// - `SokrResult::VersionMismatch` if plugin ABI is incompatible
+/// - `SokrResult::RegistryFull` if registry has no free slots
+///
+/// # Safety
+/// Non-null pointers must be valid and properly aligned.
+#[no_mangle]
+pub unsafe extern "C" fn sokr_register_substrate(
+    plugin: *const SokrSubstratePlugin,
+    substrate_id_out: *mut u64,
+) -> SokrResult {
+    if plugin.is_null() || substrate_id_out.is_null() {
+        return SokrResult::InvalidInput;
+    }
+
+    let plugin_value = unsafe { core::ptr::read(plugin) };
+    let compatibility = plugin_value.version.check_compatible(SokrVersion::CURRENT);
+    if compatibility != SokrResult::Ok {
+        return SokrResult::VersionMismatch;
+    }
+
+    // SAFETY: Single-threaded access invariant for Phase 1.2.
+    let registry = unsafe { &mut *REGISTRY.get() };
+    match registry.register_with_id(plugin_value) {
+        Ok(id) => {
+            unsafe {
+                *substrate_id_out = id;
+            }
+            SokrResult::Ok
+        }
+        Err(err) => err,
+    }
+}
+
+/// Deregisters a substrate plugin by ID.
+///
+/// # Returns
+/// - `SokrResult::Ok` if deregistered
+/// - `SokrResult::InvalidInput` if `substrate_id` is 0
+/// - `SokrResult::NotFound` if ID is unknown
+#[no_mangle]
+pub extern "C" fn sokr_deregister_substrate(substrate_id: u64) -> SokrResult {
+    if substrate_id == 0 {
+        return SokrResult::InvalidInput;
+    }
+
+    // SAFETY: Single-threaded access invariant for Phase 1.2.
+    unsafe { (&mut *REGISTRY.get()).deregister(substrate_id) }
+}
+
+/// Lists currently registered substrate IDs.
+///
+/// # Arguments
+/// - `substrate_ids_out`: Output buffer for substrate IDs (may be null only when `capacity == 0`)
+/// - `capacity`: Number of `u64` entries available in `substrate_ids_out`
+/// - `count_out`: Output pointer for total number of registered substrates
+///
+/// # Returns
+/// - `SokrResult::Ok` if all IDs were written
+/// - `SokrResult::RegistryFull` if `capacity` is smaller than the number of registered substrates
+/// - `SokrResult::InvalidInput` if pointers are invalid
+///
+/// # Safety
+/// - `count_out` must be non-null and valid for writes
+/// - If `capacity > 0`, `substrate_ids_out` must be non-null and valid for `capacity` writes
+#[no_mangle]
+pub unsafe extern "C" fn sokr_list_substrates(
+    substrate_ids_out: *mut u64,
+    capacity: usize,
+    count_out: *mut usize,
+) -> SokrResult {
+    if count_out.is_null() {
+        return SokrResult::InvalidInput;
+    }
+    if capacity > 0 && substrate_ids_out.is_null() {
+        return SokrResult::InvalidInput;
+    }
+
+    // SAFETY: Single-threaded access invariant for Phase 1.2.
+    let registry = unsafe { &*REGISTRY.get() };
+    let total = registry.len();
+    unsafe {
+        *count_out = total;
+    }
+
+    let mut written = 0usize;
+    for plugin in registry.iter() {
+        if written >= capacity {
+            return SokrResult::RegistryFull;
+        }
+        unsafe {
+            *substrate_ids_out.add(written) = plugin.substrate_id;
+        }
+        written += 1;
+    }
+
+    SokrResult::Ok
 }
 
 /// Queries a substrate's capability to fulfill a computation.
@@ -725,13 +832,15 @@ mod tests {
         ) -> SokrResult {
             SokrResult::DispatchFailed
         }
-        unsafe {
-            (*REGISTRY.get()).register(dispatch_plugin(7, failing_dispatch));
-        }
+        let assigned_id = unsafe {
+            (*REGISTRY.get())
+                .register_with_id(dispatch_plugin(7, failing_dispatch))
+                .expect("registration should succeed")
+        };
 
         let request = SokrDispatchRequest {
             computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
-            substrate_id: 7,
+            substrate_id: assigned_id,
             ir_data_ptr: b"ir".as_ptr().cast(),
             ir_data_len: 2,
             params_ptr: core::ptr::null(),
@@ -937,13 +1046,15 @@ mod tests {
     #[test]
     fn dispatch_routes_to_registered_plugin() {
         reset_registry();
-        unsafe {
-            (*REGISTRY.get()).register(dispatch_plugin(7, accepting_dispatch));
-        }
+        let assigned_id = unsafe {
+            (*REGISTRY.get())
+                .register_with_id(dispatch_plugin(7, accepting_dispatch))
+                .expect("registration should succeed")
+        };
 
         let request = SokrDispatchRequest {
             computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
-            substrate_id: 7,
+            substrate_id: assigned_id,
             ir_data_ptr: b"ir".as_ptr().cast(),
             ir_data_len: 2,
             params_ptr: core::ptr::null(),
@@ -991,13 +1102,15 @@ mod tests {
     #[test]
     fn dispatch_rejecting_plugin_returns_no_capable() {
         reset_registry();
-        unsafe {
-            (*REGISTRY.get()).register(dispatch_plugin(7, rejecting_dispatch));
-        }
+        let assigned_id = unsafe {
+            (*REGISTRY.get())
+                .register_with_id(dispatch_plugin(7, rejecting_dispatch))
+                .expect("registration should succeed")
+        };
 
         let request = SokrDispatchRequest {
             computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
-            substrate_id: 7,
+            substrate_id: assigned_id,
             ir_data_ptr: b"ir".as_ptr().cast(),
             ir_data_len: 2,
             params_ptr: core::ptr::null(),
@@ -1013,5 +1126,179 @@ mod tests {
         let result = unsafe { sokr_dispatch(&request, &mut response) };
         assert_eq!(result, SokrResult::NoCapableSubstrate);
         assert_eq!(response.completion_token.handle, 0);
+    }
+
+    use core::sync::atomic::{AtomicUsize, Ordering};
+
+    static FFI_DESTROY_CALLS: AtomicUsize = AtomicUsize::new(0);
+
+    extern "C" fn ffi_test_capability(
+        _version: *const SokrVersion,
+        _query: *const SokrCapabilityQuery,
+        _response: *mut SokrCapabilityResponse,
+    ) -> SokrResult {
+        SokrResult::CapabilityDenied
+    }
+
+    extern "C" fn ffi_test_dispatch(
+        _request: *const SokrDispatchRequest,
+        _response: *mut SokrDispatchResponse,
+    ) -> SokrResult {
+        SokrResult::NoCapableSubstrate
+    }
+
+    extern "C" fn ffi_test_completion(
+        _query: *const SokrCompletionQuery,
+        _signal: *mut SokrCompletionSignal,
+    ) -> SokrResult {
+        SokrResult::NotFound
+    }
+
+    extern "C" fn ffi_test_destroy() {
+        FFI_DESTROY_CALLS.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn ffi_test_plugin(version: SokrVersion) -> crate::types::SokrSubstratePlugin {
+        crate::types::SokrSubstratePlugin {
+            version,
+            capability_fn: ffi_test_capability,
+            dispatch_fn: ffi_test_dispatch,
+            completion_fn: ffi_test_completion,
+            destroy_fn: ffi_test_destroy,
+            substrate_id: 0,
+            padding: [0; 8],
+        }
+    }
+
+    #[test]
+    fn register_one_plugin_succeeds_and_returns_id() {
+        reset_registry();
+        let plugin = ffi_test_plugin(SokrVersion::CURRENT);
+        let mut assigned = 0;
+
+        let result = unsafe { sokr_register_substrate(&plugin, &mut assigned) };
+        assert_eq!(result, SokrResult::Ok);
+        assert_ne!(assigned, 0);
+    }
+
+    #[test]
+    fn register_beyond_capacity_returns_registry_full() {
+        reset_registry();
+
+        for _ in 0..crate::registry::MAX_SUBSTRATES {
+            let plugin = ffi_test_plugin(SokrVersion::CURRENT);
+            let mut assigned = 0;
+            assert_eq!(unsafe { sokr_register_substrate(&plugin, &mut assigned) }, SokrResult::Ok);
+            assert_ne!(assigned, 0);
+        }
+
+        let plugin = ffi_test_plugin(SokrVersion::CURRENT);
+        let mut assigned = 0;
+        assert_eq!(
+            unsafe { sokr_register_substrate(&plugin, &mut assigned) },
+            SokrResult::RegistryFull
+        );
+    }
+
+    #[test]
+    fn register_incompatible_version_returns_version_mismatch() {
+        reset_registry();
+        let plugin = ffi_test_plugin(SokrVersion {
+            major: 99,
+            minor: 0,
+            patch: 0,
+        });
+        let mut assigned = 0;
+
+        let result = unsafe { sokr_register_substrate(&plugin, &mut assigned) };
+        assert_eq!(result, SokrResult::VersionMismatch);
+        assert_eq!(assigned, 0);
+    }
+
+    #[test]
+    fn register_null_pointer_returns_invalid_input() {
+        reset_registry();
+        let plugin = ffi_test_plugin(SokrVersion::CURRENT);
+        let mut assigned = 0;
+
+        assert_eq!(
+            unsafe { sokr_register_substrate(core::ptr::null(), &mut assigned) },
+            SokrResult::InvalidInput
+        );
+        assert_eq!(
+            unsafe { sokr_register_substrate(&plugin, core::ptr::null_mut()) },
+            SokrResult::InvalidInput
+        );
+    }
+
+    #[test]
+    fn deregister_existing_plugin_calls_destroy_once() {
+        reset_registry();
+        FFI_DESTROY_CALLS.store(0, Ordering::SeqCst);
+
+        let plugin = ffi_test_plugin(SokrVersion::CURRENT);
+        let mut assigned = 0;
+        assert_eq!(
+            unsafe { sokr_register_substrate(&plugin, &mut assigned) },
+            SokrResult::Ok
+        );
+
+        assert_eq!(sokr_deregister_substrate(assigned), SokrResult::Ok);
+        assert_eq!(FFI_DESTROY_CALLS.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn deregister_unknown_returns_not_found() {
+        reset_registry();
+        assert_eq!(sokr_deregister_substrate(777), SokrResult::NotFound);
+    }
+
+    #[test]
+    fn deregister_then_reregister_works() {
+        reset_registry();
+
+        let plugin_a = ffi_test_plugin(SokrVersion::CURRENT);
+        let mut id_a = 0;
+        assert_eq!(
+            unsafe { sokr_register_substrate(&plugin_a, &mut id_a) },
+            SokrResult::Ok
+        );
+        assert_eq!(sokr_deregister_substrate(id_a), SokrResult::Ok);
+
+        let plugin_b = ffi_test_plugin(SokrVersion::CURRENT);
+        let mut id_b = 0;
+        assert_eq!(
+            unsafe { sokr_register_substrate(&plugin_b, &mut id_b) },
+            SokrResult::Ok
+        );
+        assert_ne!(id_b, 0);
+    }
+
+    #[test]
+    fn list_substrates_returns_registered_ids() {
+        reset_registry();
+
+        let plugin_a = ffi_test_plugin(SokrVersion::CURRENT);
+        let plugin_b = ffi_test_plugin(SokrVersion::CURRENT);
+        let mut id_a = 0;
+        let mut id_b = 0;
+
+        assert_eq!(
+            unsafe { sokr_register_substrate(&plugin_a, &mut id_a) },
+            SokrResult::Ok
+        );
+        assert_eq!(
+            unsafe { sokr_register_substrate(&plugin_b, &mut id_b) },
+            SokrResult::Ok
+        );
+
+        let mut ids = [0u64; 2];
+        let mut count = 0usize;
+        let result = unsafe { sokr_list_substrates(ids.as_mut_ptr(), ids.len(), &mut count) };
+
+        assert_eq!(result, SokrResult::Ok);
+        assert_eq!(count, 2);
+        assert!(ids.contains(&id_a));
+        assert!(ids.contains(&id_b));
     }
 }

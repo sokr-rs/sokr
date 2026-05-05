@@ -101,22 +101,22 @@ and hardware that does not yet exist.
   - [x] Commit generated `include/sokr.h` to repo
 
 ### 1.3 Plugin Registry
-- [ ] 🔴 `sokr_register_substrate()` — register plugin with version check
-  - [ ] Validate plugin version compatibility on registration
-  - [ ] Assign unique `substrate_id` to each registered plugin
-  - [ ] Store in fixed-size static array — no heap allocation
-  - [ ] Unit test: register one plugin succeeds, returns assigned id
-  - [ ] Unit test: register beyond capacity returns `RegistryFull`
-  - [ ] Unit test: register incompatible version returns `VersionMismatch`
-  - [ ] Unit test: register with null pointer returns `InvalidInput`
-- [ ] 🔴 `sokr_deregister_substrate()` — deregister and call destroy_fn
-  - [ ] Call plugin's `destroy_fn` before removal
-  - [ ] Mark slot as available for reuse
-  - [ ] Unit test: deregister existing plugin succeeds
-  - [ ] Unit test: deregister unknown id returns `NotFound`
-  - [ ] Unit test: deregister then re-register in same slot works
-- [ ] 🟡 `sokr_list_substrates()` — introspection
-  - [ ] Unit test: list returns all registered substrate IDs
+- [x] 🔴 `sokr_register_substrate()` — register plugin with version check
+  - [x] Validate plugin version compatibility on registration
+  - [x] Assign unique `substrate_id` to each registered plugin
+  - [x] Store in fixed-size static array — no heap allocation
+  - [x] Unit test: register one plugin succeeds, returns assigned id
+  - [x] Unit test: register beyond capacity returns `RegistryFull`
+  - [x] Unit test: register incompatible version returns `VersionMismatch`
+  - [x] Unit test: register with null pointer returns `InvalidInput`
+- [x] 🔴 `sokr_deregister_substrate()` — deregister and call destroy_fn
+  - [x] Call plugin's `destroy_fn` before removal
+  - [x] Mark slot as available for reuse
+  - [x] Unit test: deregister existing plugin succeeds
+  - [x] Unit test: deregister unknown id returns `NotFound`
+  - [x] Unit test: deregister then re-register in same slot works
+- [x] 🟡 `sokr_list_substrates()` — introspection
+  - [x] Unit test: list returns all registered substrate IDs
 
 ### 1.4 Tests
 - [ ] 🔴 Unit tests for version handshake
@@ -125,14 +125,14 @@ and hardware that does not yet exist.
   - [ ] `test_version_incompatible_major_higher`
   - [ ] `test_version_incompatible_major_lower`
   - [ ] `test_version_patch_irrelevant`
-- [ ] 🔴 Unit tests for plugin registration
-  - [ ] `test_register_valid_plugin`
-  - [ ] `test_register_null_vtable`
-  - [ ] `test_register_incompatible_version`
-  - [ ] `test_register_at_capacity`
-  - [ ] `test_deregister_valid`
-  - [ ] `test_deregister_invalid_id`
-  - [ ] `test_register_after_deregister`
+- [x] 🔴 Unit tests for plugin registration
+  - [x] `test_register_valid_plugin`
+  - [x] `test_register_null_vtable`
+  - [x] `test_register_incompatible_version`
+  - [x] `test_register_at_capacity`
+  - [x] `test_deregister_valid`
+  - [x] `test_deregister_invalid_id`
+  - [x] `test_register_after_deregister`
 - [ ] 🟡 Miri run — undefined behaviour check on ABI types
   - [ ] `cargo miri test` passes clean
   - [ ] Add Miri job to CI — nightly only, allowed to fail

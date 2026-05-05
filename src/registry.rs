@@ -2,8 +2,6 @@
 //!
 //! The registry maintains the set of registered substrate plugins and
 //! provides lookup by substrate ID.
-//!
-//! **Note**: This is a placeholder implementation. Thread-safety will be added in Phase 1.3.
 
 use crate::types::{SokrResult, SokrSubstratePlugin};
 
@@ -11,12 +9,11 @@ use crate::types::{SokrResult, SokrSubstratePlugin};
 pub const MAX_SUBSTRATES: usize = 16;
 
 /// Plugin registry for managing substrate plugins.
-///
-/// This is a placeholder implementation for Phase 1.2.
-/// Full implementation with thread-safety will be added in Phase 1.3.
 pub struct Registry {
     /// Fixed-size array of substrate slots.
     substrates: [Option<SokrSubstratePlugin>; MAX_SUBSTRATES],
+    /// Next core-assigned substrate identifier (never returns 0).
+    next_substrate_id: u64,
 }
 
 impl Registry {
@@ -26,6 +23,7 @@ impl Registry {
         const EMPTY: Option<SokrSubstratePlugin> = None;
         Self {
             substrates: [EMPTY; MAX_SUBSTRATES],
+            next_substrate_id: 1,
         }
     }
 
@@ -47,23 +45,67 @@ impl Registry {
         self.substrates.iter().all(Option::is_some)
     }
 
-    /// Registers a substrate plugin.
-    ///
-    /// Returns `SokrResult::RegistryFull` if at capacity.
-    pub fn register(&mut self, plugin: SokrSubstratePlugin) -> SokrResult {
-        if self.is_full() {
-            return SokrResult::RegistryFull;
+    fn allocate_substrate_id(&mut self) -> u64 {
+        loop {
+            let candidate = self.next_substrate_id;
+            self.next_substrate_id = self.next_substrate_id.wrapping_add(1);
+            if self.next_substrate_id == 0 {
+                self.next_substrate_id = 1;
+            }
+
+            if candidate != 0 && self.find_by_substrate_id(candidate).is_none() {
+                return candidate;
+            }
         }
+    }
+
+    /// Registers a substrate plugin and returns the assigned non-zero substrate ID.
+    ///
+    /// Returns `Err(SokrResult::RegistryFull)` if at capacity.
+    pub fn register_with_id(&mut self, mut plugin: SokrSubstratePlugin) -> Result<u64, SokrResult> {
+        if self.is_full() {
+            return Err(SokrResult::RegistryFull);
+        }
+
+        let assigned_id = self.allocate_substrate_id();
+        plugin.substrate_id = assigned_id;
 
         for slot in &mut self.substrates {
             if slot.is_none() {
                 *slot = Some(plugin);
-                return SokrResult::Ok;
+                return Ok(assigned_id);
             }
         }
 
-        // All slots occupied despite is_full() check — logically unreachable.
         unreachable!("is_full() returned false but no empty slot found")
+    }
+
+    /// Registers a substrate plugin.
+    ///
+    /// Returns `SokrResult::RegistryFull` if at capacity.
+    pub fn register(&mut self, plugin: SokrSubstratePlugin) -> SokrResult {
+        match self.register_with_id(plugin) {
+            Ok(_) => SokrResult::Ok,
+            Err(err) => err,
+        }
+    }
+
+    /// Deregisters a substrate plugin by its assigned substrate ID.
+    ///
+    /// Calls the plugin's `destroy_fn` exactly once before removal.
+    pub fn deregister(&mut self, substrate_id: u64) -> SokrResult {
+        for slot in &mut self.substrates {
+            if let Some(plugin) = slot.as_ref() {
+                if plugin.substrate_id == substrate_id {
+                    let destroy_fn = plugin.destroy_fn;
+                    destroy_fn();
+                    *slot = None;
+                    return SokrResult::Ok;
+                }
+            }
+        }
+
+        SokrResult::NotFound
     }
 
     /// Returns a reference to the substrate at the given index.
@@ -92,8 +134,12 @@ impl Default for Registry {
 
 #[cfg(test)]
 mod tests {
+    use core::sync::atomic::{AtomicUsize, Ordering};
+
     use super::*;
     use crate::types::{SokrResult, SokrSubstratePlugin, SokrVersion};
+
+    static DESTROY_CALLS: AtomicUsize = AtomicUsize::new(0);
 
     extern "C" fn dummy_capability(
         _version: *const crate::types::SokrVersion,
@@ -117,7 +163,9 @@ mod tests {
         SokrResult::Ok
     }
 
-    extern "C" fn dummy_destroy() {}
+    extern "C" fn dummy_destroy() {
+        DESTROY_CALLS.fetch_add(1, Ordering::SeqCst);
+    }
 
     fn dummy_plugin() -> SokrSubstratePlugin {
         SokrSubstratePlugin {
@@ -145,6 +193,16 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(reg.len(), 1);
         assert!(!reg.is_empty());
+    }
+
+    #[test]
+    fn register_with_id_returns_assigned_non_zero_id() {
+        let mut reg = Registry::new();
+        let assigned = reg
+            .register_with_id(dummy_plugin())
+            .expect("registration should succeed");
+        assert_ne!(assigned, 0);
+        assert!(reg.find_by_substrate_id(assigned).is_some());
     }
 
     #[test]
@@ -180,5 +238,40 @@ mod tests {
         assert!(reg.register(dummy_plugin()).is_ok());
         assert!(reg.get(MAX_SUBSTRATES).is_none());
         assert!(reg.get(usize::MAX).is_none());
+    }
+
+    #[test]
+    fn deregister_existing_calls_destroy() {
+        DESTROY_CALLS.store(0, Ordering::SeqCst);
+        let mut reg = Registry::new();
+
+        let assigned = reg
+            .register_with_id(dummy_plugin())
+            .expect("registration should succeed");
+
+        assert_eq!(reg.deregister(assigned), SokrResult::Ok);
+        assert_eq!(DESTROY_CALLS.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn deregister_unknown_returns_not_found() {
+        let mut reg = Registry::new();
+        assert_eq!(reg.deregister(777), SokrResult::NotFound);
+    }
+
+    #[test]
+    fn deregister_then_reregister_works() {
+        let mut reg = Registry::new();
+
+        let first = reg
+            .register_with_id(dummy_plugin())
+            .expect("registration should succeed");
+        assert_eq!(reg.deregister(first), SokrResult::Ok);
+
+        let second = reg
+            .register_with_id(dummy_plugin())
+            .expect("registration should succeed");
+        assert_ne!(second, 0);
+        assert!(reg.find_by_substrate_id(second).is_some());
     }
 }
