@@ -62,6 +62,10 @@ impl Registry {
     /// Registers a substrate plugin and returns the assigned non-zero substrate ID.
     ///
     /// Returns `Err(SokrResult::RegistryFull)` if at capacity.
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error when the registry is full.
     pub fn register_with_id(&mut self, mut plugin: SokrSubstratePlugin) -> Result<u64, SokrResult> {
         if self.is_full() {
             return Err(SokrResult::RegistryFull);

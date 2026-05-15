@@ -82,7 +82,7 @@ impl SokrVersion {
 pub static SOKR_VERSION_CURRENT: SokrVersion = SokrVersion {
     major: 0,
     minor: 1,
-    patch: 1,
+    patch: 2,
 };
 
 /// Result codes for SOKR operations.
@@ -298,9 +298,47 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_version_compatible_exact() {
+        let core = SokrVersion::CURRENT;
+        let plugin = SokrVersion {
+            major: core.major,
+            minor: core.minor,
+            patch: 0,
+        };
+        assert!(plugin.check_compatible(core).is_ok());
+    }
+
+    #[test]
     fn version_compatible_same() {
         let v = SokrVersion::CURRENT;
         assert!(v.check_compatible(v).is_ok());
+    }
+
+    #[test]
+    fn test_version_incompatible_major_higher() {
+        let core = SokrVersion::CURRENT;
+        let plugin = SokrVersion {
+            major: core.major + 1,
+            minor: 0,
+            patch: 0,
+        };
+        assert!(plugin.check_compatible(core).is_err());
+    }
+
+    #[test]
+    fn test_version_incompatible_major_lower() {
+        let plugin = SokrVersion {
+            major: 0,
+            minor: 0,
+            patch: 0,
+        };
+        let core = SokrVersion {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        };
+        // Major version differs (0 vs 1), should be incompatible
+        assert!(plugin.check_compatible(core).is_err());
     }
 
     #[test]
@@ -316,6 +354,17 @@ mod tests {
             patch: 0,
         };
         assert!(plugin.check_compatible(core).is_err());
+    }
+
+    #[test]
+    fn test_version_compatible_minor_older_plugin() {
+        let core = SokrVersion::CURRENT;
+        let plugin = SokrVersion {
+            major: core.major,
+            minor: if core.minor > 0 { core.minor - 1 } else { 0 },
+            patch: 0,
+        };
+        assert!(plugin.check_compatible(core).is_ok());
     }
 
     #[test]

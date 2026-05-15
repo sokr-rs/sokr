@@ -1188,7 +1188,10 @@ mod tests {
         for _ in 0..crate::registry::MAX_SUBSTRATES {
             let plugin = ffi_test_plugin(SokrVersion::CURRENT);
             let mut assigned = 0;
-            assert_eq!(unsafe { sokr_register_substrate(&plugin, &mut assigned) }, SokrResult::Ok);
+            assert_eq!(
+                unsafe { sokr_register_substrate(&plugin, &mut assigned) },
+                SokrResult::Ok
+            );
             assert_ne!(assigned, 0);
         }
 

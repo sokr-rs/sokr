@@ -18,10 +18,12 @@ and hardware that does not yet exist.
 ---
 
 ## Phase 0 — Foundation `v0.1.x`
+
 > Claim the name. Establish the philosophy. No runnable code yet.
 > **Current phase.**
 
 ### 0.1 Identity
+
 - [x] 🔴 Name locked: **SOKR — Sovereign Open Kernel Runtime**
 - [x] 🔴 License decided: **MIT OR Apache-2.0**
 - [x] 🔴 Copyright holder: **The SOKR Project**
@@ -41,6 +43,7 @@ and hardware that does not yet exist.
   - [x] Publish `sokr` v0.1.1 from new structure → https://crates.io/crates/sokr/0.1.1
 
 ### 0.2 Design Documents
+
 - [x] 🔴 Core philosophy documented
 - [x] 🔴 Three-function interface defined: Capability, Dispatch, Completion
 - [x] 🔴 Plugin categories defined: IR, Substrate, Language Binding, Dispatch Policy
@@ -55,6 +58,7 @@ and hardware that does not yet exist.
   - [ ] Incorporate feedback or document rationale for rejection
 
 ### 0.3 Tooling
+
 - [x] 🔴 GitHub Actions CI — check, test, clippy, fmt, audit, no_std
 - [x] 🔴 `.github/ISSUE_TEMPLATE/` — bug, feature, plugin proposal
 - [x] 🟡 `deny.toml` — license and dependency policy
@@ -63,14 +67,17 @@ and hardware that does not yet exist.
 ---
 
 ## Phase 1 — Core Skeleton `v0.2.0`
+
 > The immutable core exists. ABI is complete. Version handshake works.
 
 ### 1.1 Repo Restructure
+
 - [x] 🔴 Complete single-crate flatten (see 0.1 Repo restructure above)
 - [x] 🔴 Verify `sokr-plugins` repo exists and `sokr-cpu` moved there
 - [x] 🔴 Update all internal references from `sokr-core` → `sokr`
 
 ### 1.2 Core ABI (`src/`)
+
 - [x] 🔴 `src/types.rs` — all C ABI struct and enum definitions
 - [x] 🔴 `src/registry.rs` — plugin registry, no heap allocation
 - [x] 🔴 `src/ffi.rs` — `#[no_mangle] extern "C"` function stubs
@@ -101,6 +108,7 @@ and hardware that does not yet exist.
   - [x] Commit generated `include/sokr.h` to repo
 
 ### 1.3 Plugin Registry
+
 - [x] 🔴 `sokr_register_substrate()` — register plugin with version check
   - [x] Validate plugin version compatibility on registration
   - [x] Assign unique `substrate_id` to each registered plugin
@@ -119,12 +127,13 @@ and hardware that does not yet exist.
   - [x] Unit test: list returns all registered substrate IDs
 
 ### 1.4 Tests
-- [ ] 🔴 Unit tests for version handshake
-  - [ ] `test_version_compatible_exact`
-  - [ ] `test_version_compatible_minor_older_plugin`
-  - [ ] `test_version_incompatible_major_higher`
-  - [ ] `test_version_incompatible_major_lower`
-  - [ ] `test_version_patch_irrelevant`
+
+- [x] ✅ Unit tests for version handshake
+  - [x] `test_version_compatible_exact`
+  - [x] `test_version_compatible_minor_older_plugin`
+  - [x] `test_version_incompatible_major_higher`
+  - [x] `test_version_incompatible_major_lower`
+  - [x] `test_version_patch_irrelevant`
 - [x] 🔴 Unit tests for plugin registration
   - [x] `test_register_valid_plugin`
   - [x] `test_register_null_vtable`
@@ -138,6 +147,7 @@ and hardware that does not yet exist.
   - [ ] Add Miri job to CI — nightly only, allowed to fail
 
 ### 1.5 `no_std` Enforcement
+
 - [x] 🔴 `#![cfg_attr(not(test), no_std)]` in `src/lib.rs`
 - [ ] 🔴 CI job: build with `--target thumbv7m-none-eabi`
   - [ ] Passes clean with no `std` leaking through
@@ -145,6 +155,7 @@ and hardware that does not yet exist.
 ---
 
 ## Phase 2 — ABI Stable `v0.3.0`
+
 > Core ABI frozen. `sokr.h` generated and committed.
 > Integration tested against `sokr-plugins` reference implementations.
 
@@ -159,6 +170,7 @@ and hardware that does not yet exist.
 ---
 
 ## Phase 3 — Formal Verification Roadmap `v1.x`
+
 > Sovereignty claim backed by proof, not just philosophy.
 
 - [ ] 🟢 Survey seL4 capability model for applicable formal methods
@@ -170,14 +182,14 @@ and hardware that does not yet exist.
 
 ## SemVer Policy
 
-| Version | Meaning |
-|---|---|
-| `0.1.x` | Foundation. ABI defined, no routing yet. |
+| Version | Meaning                                            |
+| ------- | -------------------------------------------------- |
+| `0.1.x` | Foundation. ABI defined, no routing yet.           |
 | `0.2.x` | Core ABI complete. Registry + routing implemented. |
-| `0.3.x` | ABI frozen. Integrated with sokr-plugins. |
-| `1.0.0` | Core ABI stable. Formal spec published. |
-| `1.x.x` | Backwards compatible additions only. |
-| `2.0.0` | Core ABI breaking change. RFC required. |
+| `0.3.x` | ABI frozen. Integrated with sokr-plugins.          |
+| `1.0.0` | Core ABI stable. Formal spec published.            |
+| `1.x.x` | Backwards compatible additions only.               |
+| `2.0.0` | Core ABI breaking change. RFC required.            |
 
 ---
 
@@ -191,4 +203,4 @@ and hardware that does not yet exist.
 
 ---
 
-*Copyright 2026 The SOKR Project — MIT OR Apache-2.0*
+_Copyright 2026 The SOKR Project — MIT OR Apache-2.0_
