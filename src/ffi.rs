@@ -171,15 +171,13 @@ pub unsafe extern "C" fn sokr_list_substrates(
         *count_out = total;
     }
 
-    let mut written = 0usize;
-    for plugin in registry.iter() {
+    for (written, plugin) in registry.iter().enumerate() {
         if written >= capacity {
             return SokrResult::RegistryFull;
         }
         unsafe {
             *substrate_ids_out.add(written) = plugin.substrate_id;
         }
-        written += 1;
     }
 
     SokrResult::Ok
