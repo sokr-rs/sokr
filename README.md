@@ -2,8 +2,6 @@
 
 > Immutable sovereign core. Everything else a plugin.
 
-**Early design phase. No API is stable. No runnable code yet.**
-
 [![Crates.io](https://img.shields.io/crates/v/sokr.svg)](https://crates.io/crates/sokr)
 [![CI](https://github.com/sokr-rs/sokr/actions/workflows/ci.yml/badge.svg)](https://github.com/sokr-rs/sokr/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
@@ -110,9 +108,62 @@ Plugins: [github.com/sokr-rs/sokr-plugins](https://github.com/sokr-rs/sokr-plugi
 
 ---
 
+## Usage
+
+### Rust (plugin author)
+
+```toml
+[dependencies]
+sokr = "0.2"
+```
+
+Include the generated C header in your plugin:
+
+```c
+#include "sokr.h"   // from include/sokr.h in this repo
+```
+
+### C ABI surface
+
+The entire runtime is three functions:
+
+```c
+// Can this substrate handle this computation?
+SokrResult sokr_capability(
+    const SokrCapabilityQuery *query,
+    SokrCapabilityResponse    *response);
+
+// Dispatch to a substrate; returns a completion token.
+SokrResult sokr_dispatch(
+    const SokrDispatchRequest *request,
+    SokrDispatchResponse      *response);
+
+// Poll the completion token.
+SokrResult sokr_completion(
+    const SokrCompletionQuery *query,
+    SokrCompletionSignal      *signal);
+```
+
+Register your plugin before calling them:
+
+```c
+SokrSubstratePlugin plugin = { ... };
+uint64_t id = 0;
+sokr_register_substrate(&plugin, &id);
+```
+
+See [`include/sokr.h`](include/sokr.h) for the full type definitions and
+[`docs/rfc/0001-plugin-interface.md`](docs/rfc/0001-plugin-interface.md)
+for the plugin contract.
+
+---
+
 ## Status
 
-`v0.1.x` — foundation phase. Core ABI defined, validation implemented. FFI stubs return `NoCapableSubstrate` pending Phase 1.3 substrate routing.
+`v0.2.0` — Core Skeleton complete. Plugin registry, full capability/dispatch/completion
+routing, and the committed C header are all in place. ABI is functional but not yet
+frozen — that happens at `v0.3.0` after integration testing against
+[sokr-plugins](https://github.com/sokr-rs/sokr-plugins).
 
 See [TODO.md](TODO.md) for the roadmap and
 [ARCHITECTURE.md](ARCHITECTURE.md) for the design.
