@@ -88,3 +88,14 @@ jobs:
           targets: thumbv7m-none-eabi
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --target thumbv7m-none-eabi
+
+  header-check:
+    name: Header Drift Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo install cbindgen
+      - run: cbindgen --crate sokr --output /tmp/sokr_check.h
+      - run: diff include/sokr.h /tmp/sokr_check.h

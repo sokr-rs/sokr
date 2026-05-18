@@ -150,7 +150,7 @@ and hardware that does not yet exist.
 
 - [x] 🔴 `#![cfg_attr(not(test), no_std)]` in `src/lib.rs`
 - [x] ✅ CI job: build with `--target thumbv7m-none-eabi`
-  - [ ] Passes clean with no `std` leaking through (`cargo build --target thumbv7m-none-eabi`)
+  - [x] Passes clean with no `std` leaking through (`cargo build --target thumbv7m-none-eabi`)
 
 ---
 

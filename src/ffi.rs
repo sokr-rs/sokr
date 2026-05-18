@@ -86,7 +86,7 @@ pub unsafe extern "C" fn sokr_check_version(
 ///
 /// # Returns
 /// - `SokrResult::Ok` on success
-/// - `SokrResult::InvalidInput` if pointers are null
+/// - `SokrResult::InvalidInput` if pointers are null or any vtable fn pointer is null
 /// - `SokrResult::VersionMismatch` if plugin ABI is incompatible
 /// - `SokrResult::RegistryFull` if registry has no free slots
 ///
@@ -99,6 +99,20 @@ pub unsafe extern "C" fn sokr_register_substrate(
 ) -> SokrResult {
     if plugin.is_null() || substrate_id_out.is_null() {
         return SokrResult::InvalidInput;
+    }
+
+    // Validate all vtable fn pointers are non-null before reading the struct.
+    // Reading an `extern "C" fn` with a zero bit pattern is UB; we read each
+    // field as `usize` first so no invalid fn-pointer value is ever materialised.
+    // SAFETY: plugin is non-null and repr(C) layout is stable.
+    unsafe {
+        let cap = core::ptr::read(core::ptr::addr_of!((*plugin).capability_fn).cast::<usize>());
+        let dis = core::ptr::read(core::ptr::addr_of!((*plugin).dispatch_fn).cast::<usize>());
+        let com = core::ptr::read(core::ptr::addr_of!((*plugin).completion_fn).cast::<usize>());
+        let des = core::ptr::read(core::ptr::addr_of!((*plugin).destroy_fn).cast::<usize>());
+        if cap == 0 || dis == 0 || com == 0 || des == 0 {
+            return SokrResult::InvalidInput;
+        }
     }
 
     let plugin_value = unsafe { core::ptr::read(plugin) };
@@ -494,7 +508,7 @@ mod tests {
 
     #[test]
     fn capability_empty_registry_returns_capability_denied() {
-        reset_registry();
+        let _guard = reset_registry();
         let query = SokrCapabilityQuery {
             computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
             ir_format: [0].as_ptr().cast(),
@@ -603,6 +617,7 @@ mod tests {
 
     #[test]
     fn dispatch_populates_response() {
+        let _guard = reset_registry();
         let request = SokrDispatchRequest {
             computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
             substrate_id: 0,
@@ -661,7 +676,7 @@ mod tests {
 
     #[test]
     fn completion_empty_registry_returns_not_found() {
-        reset_registry();
+        let _guard = reset_registry();
         let query = SokrCompletionQuery {
             completion_token: crate::types::SokrCompletionToken { handle: 1 },
             timeout_ns: 0,
@@ -731,7 +746,7 @@ mod tests {
 
     #[test]
     fn completion_routes_to_plugin_recognizing_token() {
-        reset_registry();
+        let _guard = reset_registry();
         unsafe {
             (*REGISTRY.get()).register(completion_plugin(1));
         }
@@ -750,7 +765,7 @@ mod tests {
 
     #[test]
     fn completion_unknown_token_returns_not_found() {
-        reset_registry();
+        let _guard = reset_registry();
         unsafe {
             (*REGISTRY.get()).register(completion_plugin(1));
         }
@@ -803,7 +818,7 @@ mod tests {
 
     #[test]
     fn completion_routes_past_disclaiming_plugin() {
-        reset_registry();
+        let _guard = reset_registry();
         unsafe {
             (*REGISTRY.get()).register(disclaiming_completion_plugin(1));
             (*REGISTRY.get()).register(completion_plugin(2));
@@ -823,7 +838,7 @@ mod tests {
 
     #[test]
     fn dispatch_registered_plugin_error_propagates() {
-        reset_registry();
+        let _guard = reset_registry();
         extern "C" fn failing_dispatch(
             _request: *const SokrDispatchRequest,
             _response: *mut SokrDispatchResponse,
@@ -858,9 +873,16 @@ mod tests {
 
     // ── Capability routing tests ───────────────────────────────
 
-    fn reset_registry() {
-        // SAFETY: Tests are run single-threaded (or hold implicit lock).
+    /// Reset the global registry and return a lock guard that serialises
+    /// all test threads for the duration of the calling test.  Assign the
+    /// return value to `_guard`; it is dropped at scope exit, releasing the
+    /// lock for the next test.
+    fn reset_registry() -> std::sync::MutexGuard<'static, ()> {
+        static TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        let guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        // SAFETY: We hold TEST_LOCK so no other test thread is accessing REGISTRY.
         unsafe { *REGISTRY.get() = Registry::new() };
+        guard
     }
 
     extern "C" fn accepting_capability(
@@ -915,7 +937,7 @@ mod tests {
 
     #[test]
     fn capability_empty_registry_denies() {
-        reset_registry();
+        let _guard = reset_registry();
         let query = SokrCapabilityQuery {
             computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
             ir_format: b"spirv\0".as_ptr().cast(),
@@ -938,7 +960,7 @@ mod tests {
 
     #[test]
     fn capability_routes_to_accepting_plugin() {
-        reset_registry();
+        let _guard = reset_registry();
         unsafe {
             (*REGISTRY.get()).register(capability_plugin(accepting_capability));
         }
@@ -965,7 +987,7 @@ mod tests {
 
     #[test]
     fn capability_skips_rejecting_plugin() {
-        reset_registry();
+        let _guard = reset_registry();
         unsafe {
             (*REGISTRY.get()).register(capability_plugin(rejecting_capability));
         }
@@ -1043,7 +1065,7 @@ mod tests {
 
     #[test]
     fn dispatch_routes_to_registered_plugin() {
-        reset_registry();
+        let _guard = reset_registry();
         let assigned_id = unsafe {
             (*REGISTRY.get())
                 .register_with_id(dispatch_plugin(7, accepting_dispatch))
@@ -1072,7 +1094,7 @@ mod tests {
 
     #[test]
     fn dispatch_unregistered_plugin_fails() {
-        reset_registry();
+        let _guard = reset_registry();
         unsafe {
             (*REGISTRY.get()).register(dispatch_plugin(7, accepting_dispatch));
         }
@@ -1099,7 +1121,7 @@ mod tests {
 
     #[test]
     fn dispatch_rejecting_plugin_returns_no_capable() {
-        reset_registry();
+        let _guard = reset_registry();
         let assigned_id = unsafe {
             (*REGISTRY.get())
                 .register_with_id(dispatch_plugin(7, rejecting_dispatch))
@@ -1170,7 +1192,7 @@ mod tests {
 
     #[test]
     fn register_one_plugin_succeeds_and_returns_id() {
-        reset_registry();
+        let _guard = reset_registry();
         let plugin = ffi_test_plugin(SokrVersion::CURRENT);
         let mut assigned = 0;
 
@@ -1181,7 +1203,7 @@ mod tests {
 
     #[test]
     fn register_beyond_capacity_returns_registry_full() {
-        reset_registry();
+        let _guard = reset_registry();
 
         for _ in 0..crate::registry::MAX_SUBSTRATES {
             let plugin = ffi_test_plugin(SokrVersion::CURRENT);
@@ -1203,7 +1225,7 @@ mod tests {
 
     #[test]
     fn register_incompatible_version_returns_version_mismatch() {
-        reset_registry();
+        let _guard = reset_registry();
         let plugin = ffi_test_plugin(SokrVersion {
             major: 99,
             minor: 0,
@@ -1218,7 +1240,7 @@ mod tests {
 
     #[test]
     fn register_null_pointer_returns_invalid_input() {
-        reset_registry();
+        let _guard = reset_registry();
         let plugin = ffi_test_plugin(SokrVersion::CURRENT);
         let mut assigned = 0;
 
@@ -1233,8 +1255,31 @@ mod tests {
     }
 
     #[test]
+    fn register_null_vtable_fn_returns_invalid_input() {
+        let _guard = reset_registry();
+        // `extern "C" fn` is non-nullable in Rust's type system, so we cannot
+        // directly assign null. Instead we copy a valid plugin's bytes and then
+        // zero the capability_fn field via raw byte writes, then hand only the
+        // raw pointer to the FFI function (no Rust reference to the invalid value).
+        let valid = ffi_test_plugin(SokrVersion::CURRENT);
+        let mut raw = core::mem::MaybeUninit::<SokrSubstratePlugin>::uninit();
+        unsafe {
+            core::ptr::copy_nonoverlapping(&valid, raw.as_mut_ptr(), 1);
+            let offset = core::mem::offset_of!(SokrSubstratePlugin, capability_fn);
+            let base = raw.as_mut_ptr() as *mut u8;
+            for i in offset..offset + core::mem::size_of::<usize>() {
+                *base.add(i) = 0;
+            }
+        }
+        let mut assigned = 0u64;
+        let result = unsafe { sokr_register_substrate(raw.as_ptr(), &mut assigned) };
+        assert_eq!(result, SokrResult::InvalidInput);
+        assert_eq!(assigned, 0);
+    }
+
+    #[test]
     fn deregister_existing_plugin_calls_destroy_once() {
-        reset_registry();
+        let _guard = reset_registry();
         FFI_DESTROY_CALLS.store(0, Ordering::SeqCst);
 
         let plugin = ffi_test_plugin(SokrVersion::CURRENT);
@@ -1250,13 +1295,13 @@ mod tests {
 
     #[test]
     fn deregister_unknown_returns_not_found() {
-        reset_registry();
+        let _guard = reset_registry();
         assert_eq!(sokr_deregister_substrate(777), SokrResult::NotFound);
     }
 
     #[test]
     fn deregister_then_reregister_works() {
-        reset_registry();
+        let _guard = reset_registry();
 
         let plugin_a = ffi_test_plugin(SokrVersion::CURRENT);
         let mut id_a = 0;
@@ -1277,7 +1322,7 @@ mod tests {
 
     #[test]
     fn list_substrates_returns_registered_ids() {
-        reset_registry();
+        let _guard = reset_registry();
 
         let plugin_a = ffi_test_plugin(SokrVersion::CURRENT);
         let plugin_b = ffi_test_plugin(SokrVersion::CURRENT);

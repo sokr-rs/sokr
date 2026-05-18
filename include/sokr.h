@@ -138,9 +138,9 @@ typedef struct SokrVersion {
   uint32_t patch;
 } SokrVersion;
 /**
- * Current SOKR core ABI version (0.1.1).
+ * Current SOKR core ABI version (0.1.2).
  */
-#define SokrVersion_CURRENT (SokrVersion){ .major = 0, .minor = 1, .patch = 1 }
+#define SokrVersion_CURRENT (SokrVersion){ .major = 0, .minor = 1, .patch = 2 }
 
 /**
  * Opaque 128-bit identifier for a computation unit.
@@ -203,6 +203,20 @@ typedef struct SokrCapabilityResponse {
    */
   uint64_t estimated_latency_ns;
 } SokrCapabilityResponse;
+
+/**
+ * Capability query function pointer type.
+ *
+ * # Pointer contract
+ * All pointers are valid and non-null for the duration of the call.
+ * Implementations MUST NOT retain any pointer past return.
+ * Return `SokrResult::CapabilityDenied` to disclaim the computation
+ * without claiming ownership; any other non-`Ok` result is propagated
+ * to the caller as a hard failure.
+ */
+typedef SokrResult (*SokrCapabilityFn)(const struct SokrVersion *version,
+                                       const struct SokrCapabilityQuery *query,
+                                       struct SokrCapabilityResponse *response);
 
 /**
  * Dispatch payload struct.
@@ -273,6 +287,18 @@ typedef struct SokrDispatchResponse {
 } SokrDispatchResponse;
 
 /**
+ * Dispatch function pointer type.
+ *
+ * # Pointer contract
+ * All pointers are valid and non-null for the duration of the call.
+ * Implementations MUST NOT retain any pointer past return.
+ * On non-`Ok` return the core zeroes `response`; any error is propagated
+ * verbatim to the caller.
+ */
+typedef SokrResult (*SokrDispatchFn)(const struct SokrDispatchRequest *request,
+                                     struct SokrDispatchResponse *response);
+
+/**
  * Query for completion status.
  */
 typedef struct SokrCompletionQuery {
@@ -289,32 +315,6 @@ typedef struct SokrCompletionQuery {
    */
   uint8_t padding[8];
 } SokrCompletionQuery;
-
-/**
- * Capability query function pointer type.
- *
- * # Pointer contract
- * All pointers are valid and non-null for the duration of the call.
- * Implementations MUST NOT retain any pointer past return.
- * Return `SokrResult::CapabilityDenied` to disclaim the computation
- * without claiming ownership; any other non-`Ok` result is propagated
- * to the caller as a hard failure.
- */
-typedef SokrResult (*SokrCapabilityFn)(const struct SokrVersion *version,
-                                       const struct SokrCapabilityQuery *query,
-                                       struct SokrCapabilityResponse *response);
-
-/**
- * Dispatch function pointer type.
- *
- * # Pointer contract
- * All pointers are valid and non-null for the duration of the call.
- * Implementations MUST NOT retain any pointer past return.
- * On non-`Ok` return the core zeroes `response`; any error is propagated
- * verbatim to the caller.
- */
-typedef SokrResult (*SokrDispatchFn)(const struct SokrDispatchRequest *request,
-                                     struct SokrDispatchResponse *response);
 
 /**
  * Completion query function pointer type.
@@ -407,6 +407,66 @@ extern const struct SokrVersion SOKR_VERSION_CURRENT;
  * Pointers must be properly aligned if non-null. Null pointers return `InvalidInput`.
  */
  SokrResult sokr_check_version(const struct SokrVersion *plugin, int32_t *result) ;
+#endif
+
+#if defined(SOKR_FFI_ENABLED)
+/**
+ * Registers a substrate plugin with the core registry.
+ *
+ * # Arguments
+ * - `plugin`: Pointer to plugin vtable
+ * - `substrate_id_out`: Output pointer for assigned non-zero substrate ID
+ *
+ * # Returns
+ * - `SokrResult::Ok` on success
+ * - `SokrResult::InvalidInput` if pointers are null or any vtable fn pointer is null
+ * - `SokrResult::VersionMismatch` if plugin ABI is incompatible
+ * - `SokrResult::RegistryFull` if registry has no free slots
+ *
+ * # Safety
+ * Non-null pointers must be valid and properly aligned.
+ */
+
+SokrResult sokr_register_substrate(const struct SokrSubstratePlugin *plugin,
+                                   uint64_t *substrate_id_out)
+;
+#endif
+
+#if defined(SOKR_FFI_ENABLED)
+/**
+ * Deregisters a substrate plugin by ID.
+ *
+ * # Returns
+ * - `SokrResult::Ok` if deregistered
+ * - `SokrResult::InvalidInput` if `substrate_id` is 0
+ * - `SokrResult::NotFound` if ID is unknown
+ */
+ SokrResult sokr_deregister_substrate(uint64_t substrate_id) ;
+#endif
+
+#if defined(SOKR_FFI_ENABLED)
+/**
+ * Lists currently registered substrate IDs.
+ *
+ * # Arguments
+ * - `substrate_ids_out`: Output buffer for substrate IDs (may be null only when `capacity == 0`)
+ * - `capacity`: Number of `u64` entries available in `substrate_ids_out`
+ * - `count_out`: Output pointer for total number of registered substrates
+ *
+ * # Returns
+ * - `SokrResult::Ok` if all IDs were written
+ * - `SokrResult::RegistryFull` if `capacity` is smaller than the number of registered substrates
+ * - `SokrResult::InvalidInput` if pointers are invalid
+ *
+ * # Safety
+ * - `count_out` must be non-null and valid for writes
+ * - If `capacity > 0`, `substrate_ids_out` must be non-null and valid for `capacity` writes
+ */
+
+SokrResult sokr_list_substrates(uint64_t *substrate_ids_out,
+                                uintptr_t capacity,
+                                uintptr_t *count_out)
+;
 #endif
 
 #if defined(SOKR_FFI_ENABLED)
