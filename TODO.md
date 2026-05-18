@@ -142,9 +142,9 @@ and hardware that does not yet exist.
   - [x] `test_deregister_valid`
   - [x] `test_deregister_invalid_id`
   - [x] `test_register_after_deregister`
-- [ ] 🟡 Miri run — undefined behaviour check on ABI types
-  - [ ] `cargo miri test` passes clean
-  - [ ] Add Miri job to CI — nightly only, allowed to fail
+- [x] 🟡 Miri run — undefined behaviour check on ABI types
+  - [x] `cargo +nighlty miri test` passes clean
+  - [x] Add Miri job to CI — nightly only, allowed to fail
 
 ### 1.5 `no_std` Enforcement
 
