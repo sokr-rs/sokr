@@ -138,9 +138,9 @@ typedef struct SokrVersion {
   uint32_t patch;
 } SokrVersion;
 /**
- * Current SOKR core ABI version (0.1.2).
+ * Current SOKR core ABI version (0.2.0).
  */
-#define SokrVersion_CURRENT (SokrVersion){ .major = 0, .minor = 1, .patch = 2 }
+#define SokrVersion_CURRENT (SokrVersion){ .major = 0, .minor = 2, .patch = 0 }
 
 /**
  * Opaque 128-bit identifier for a computation unit.

@@ -423,8 +423,7 @@ mod tests {
         assert!(!ptr.is_null());
         unsafe {
             let version = *ptr;
-            assert_eq!(version.major, 0);
-            assert_eq!(version.minor, 1);
+            assert_eq!(version, SokrVersion::CURRENT);
         }
     }
 
