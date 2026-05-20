@@ -1,7 +1,7 @@
 # SOKR — Development TODO
 
 > Sovereign Open Kernel Runtime — Core Only
-> Last Updated: 2026-04-20
+> Last Updated: 2026-05-20
 > Legend: 🔴 Critical path · 🟡 Important · 🟢 Nice-to-have
 
 ---
@@ -151,6 +151,36 @@ and hardware that does not yet exist.
 - [x] 🔴 `#![cfg_attr(not(test), no_std)]` in `src/lib.rs`
 - [x] ✅ CI job: build with `--target thumbv7m-none-eabi`
   - [x] Passes clean with no `std` leaking through (`cargo build --target thumbv7m-none-eabi`)
+
+### 1.6 Pre-freeze Cleanup (before v0.3.0 ABI lock)
+
+- [ ] 🟡 Fix doc/code contract mismatch in `sokr_capability` (`src/ffi.rs`)
+  - The `# Response Contract` docstring claims the response is fully zeroed on
+    `InvalidInput`, but early-exit paths (zero-length IR, null `ir_format`,
+    null `ir_data_ptr`) return before any zeroing occurs. Either zero `*response`
+    on all `InvalidInput` paths, or narrow the doc to: *"zeroed on `CapabilityDenied`
+    (after routing) and on plugin-owned errors; unmodified on input-validation
+    `InvalidInput` returns."*
+- [ ] 🟡 Add missing `sokr_list_substrates` test coverage (`src/ffi.rs`)
+  - [ ] Count-only query: `capacity = 0`, `substrate_ids_out = NULL` — verifies
+        callers can discover count before allocating a buffer
+  - [ ] Truncated buffer: register N substrates, pass buffer of size < N — verifies
+        `SokrResult::RegistryFull` is returned (currently the only reachable path
+        for that return code from this function is untested)
+- [ ] 🟢 Remove spurious `#[allow(unsafe_code)]` on `SOKR_VERSION_CURRENT`
+      (`src/types.rs:80`) — `#[no_mangle]` on a safe static does not require this
+      lint exemption; the annotation is misleading
+- [ ] 🟢 Change `SokrCompletionToken` from `#[repr(C)]` to `#[repr(transparent)]`
+      (`src/types.rs:203`) — it is a single-field newtype over `u64`; `repr(transparent)`
+      gives the same layout guarantee with stronger semantics and makes the
+      zero-sentinel contract more explicit; no ABI change (layout is identical)
+- [ ] 🟢 Remove duplicate version compatibility test (`src/types.rs`) —
+      `test_version_compatible_exact` and `version_compatible_same` both assert
+      that `SokrVersion::CURRENT` is compatible with itself; remove one
+- [ ] 🟢 Guard `DESTROY_CALLS` static in `registry::tests` (`src/registry.rs`) —
+      the counter is unguarded against concurrent test threads; follow the
+      `ffi::tests::reset_registry()` pattern (mutex serialization) to prevent
+      flaky assertions if parallelism is ever enabled
 
 ---
 
