@@ -260,13 +260,7 @@ typedef struct SokrDispatchRequest {
  * - Valid tokens are always non-zero (assigned by substrate on successful dispatch)
  * - Callers receiving `handle = 0` on error should not use it for completion queries
  */
-typedef struct SokrCompletionToken {
-  /**
-   * Opaque handle identifying this completion.
-   * Value of 0 indicates an invalid or unset token.
-   */
-  uint64_t handle;
-} SokrCompletionToken;
+typedef uint64_t SokrCompletionToken;
 
 /**
  * Response from a dispatch request.
@@ -283,7 +277,7 @@ typedef struct SokrDispatchResponse {
   /**
    * Token to query completion status.
    */
-  struct SokrCompletionToken completion_token;
+  SokrCompletionToken completion_token;
 } SokrDispatchResponse;
 
 /**
@@ -305,7 +299,7 @@ typedef struct SokrCompletionQuery {
   /**
    * Completion token to query.
    */
-  struct SokrCompletionToken completion_token;
+  SokrCompletionToken completion_token;
   /**
    * Timeout in nanoseconds (0 for no timeout).
    */
@@ -483,8 +477,8 @@ SokrResult sokr_list_substrates(uint64_t *substrate_ids_out,
  * - `SokrResult::CapabilityDenied` if no registered substrate accepts the computation
  *
  * # Response Contract (Failure Path)
- * On `InvalidInput` or `CapabilityDenied`, the response is fully zeroed
- * (`result`, `padding`, `substrate_id`, `estimated_latency_ns`).
+ * On failure (`InvalidInput` or `CapabilityDenied`), the response is fully zeroed
+ * (`result`, `padding`, `substrate_id`, `estimated_latency_ns`) before return.
  * Callers must not read uninitialized fields.
  *
  * # Safety
