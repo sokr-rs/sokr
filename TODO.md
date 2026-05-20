@@ -154,33 +154,25 @@ and hardware that does not yet exist.
 
 ### 1.6 Pre-freeze Cleanup (before v0.3.0 ABI lock)
 
-- [ ] 🟡 Fix doc/code contract mismatch in `sokr_capability` (`src/ffi.rs`)
-  - The `# Response Contract` docstring claims the response is fully zeroed on
-    `InvalidInput`, but early-exit paths (zero-length IR, null `ir_format`,
-    null `ir_data_ptr`) return before any zeroing occurs. Either zero `*response`
-    on all `InvalidInput` paths, or narrow the doc to: *"zeroed on `CapabilityDenied`
-    (after routing) and on plugin-owned errors; unmodified on input-validation
-    `InvalidInput` returns."*
-- [ ] 🟡 Add missing `sokr_list_substrates` test coverage (`src/ffi.rs`)
-  - [ ] Count-only query: `capacity = 0`, `substrate_ids_out = NULL` — verifies
+- [x] 🟡 Fix doc/code contract mismatch in `sokr_capability` (`src/ffi.rs`)
+  - [x] Zero response on all `InvalidInput` paths (zero-length IR, null `ir_format`,
+        null `ir_data_ptr`) to match documentation and maintain consistent semantics
+- [x] 🟡 Add missing `sokr_list_substrates` test coverage (`src/ffi.rs`)
+  - [x] Count-only query: `capacity = 0`, `substrate_ids_out = NULL` — verifies
         callers can discover count before allocating a buffer
-  - [ ] Truncated buffer: register N substrates, pass buffer of size < N — verifies
-        `SokrResult::RegistryFull` is returned (currently the only reachable path
-        for that return code from this function is untested)
-- [ ] 🟢 Remove spurious `#[allow(unsafe_code)]` on `SOKR_VERSION_CURRENT`
-      (`src/types.rs:80`) — `#[no_mangle]` on a safe static does not require this
-      lint exemption; the annotation is misleading
-- [ ] 🟢 Change `SokrCompletionToken` from `#[repr(C)]` to `#[repr(transparent)]`
-      (`src/types.rs:203`) — it is a single-field newtype over `u64`; `repr(transparent)`
-      gives the same layout guarantee with stronger semantics and makes the
-      zero-sentinel contract more explicit; no ABI change (layout is identical)
-- [ ] 🟢 Remove duplicate version compatibility test (`src/types.rs`) —
+  - [x] Truncated buffer: register N substrates, pass buffer of size < N — verifies
+        `SokrResult::RegistryFull` is returned
+- [x] 🟢 Fix `sokr_list_substrates` loop logic — only attempt writes when `capacity > 0`
+      to allow count-only queries to succeed
+- [x] 🟢 Change `SokrCompletionToken` from `#[repr(C)]` to `#[repr(transparent)]`
+      (`src/types.rs:203`) — single-field newtype over `u64`; stronger FFI semantics
+- [x] 🟢 Document `#[allow(unsafe_code)]` on `SOKR_VERSION_CURRENT`
+      (`src/types.rs:81`) — add safety comment explaining `#[no_mangle]` requirement
+- [x] 🟢 Remove duplicate version compatibility test (`src/types.rs`) —
       `test_version_compatible_exact` and `version_compatible_same` both assert
-      that `SokrVersion::CURRENT` is compatible with itself; remove one
-- [ ] 🟢 Guard `DESTROY_CALLS` static in `registry::tests` (`src/registry.rs`) —
-      the counter is unguarded against concurrent test threads; follow the
-      `ffi::tests::reset_registry()` pattern (mutex serialization) to prevent
-      flaky assertions if parallelism is ever enabled
+      exact match; removed the less descriptive one
+- [x] 🟢 Guard `DESTROY_CALLS` static in `registry::tests` (`src/registry.rs`) —
+      add mutex serialization to prevent flaky assertions if parallelism enabled
 
 ---
 
