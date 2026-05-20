@@ -145,6 +145,15 @@ mod tests {
 
     static DESTROY_CALLS: AtomicUsize = AtomicUsize::new(0);
 
+    /// Reset DESTROY_CALLS and serialize test access via mutex.
+    /// Assign return value to `_guard`; it is dropped at scope exit.
+    fn reset_destroy_calls() -> std::sync::MutexGuard<'static, ()> {
+        static TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        let guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        DESTROY_CALLS.store(0, Ordering::SeqCst);
+        guard
+    }
+
     extern "C" fn dummy_capability(
         _version: *const crate::types::SokrVersion,
         _query: *const crate::types::SokrCapabilityQuery,
@@ -246,7 +255,7 @@ mod tests {
 
     #[test]
     fn deregister_existing_calls_destroy() {
-        DESTROY_CALLS.store(0, Ordering::SeqCst);
+        let _guard = reset_destroy_calls();
         let mut reg = Registry::new();
 
         let assigned = reg

@@ -77,6 +77,8 @@ impl SokrVersion {
 ///
 /// This is exported as `extern const` (valid at file scope in C),
 /// unlike the `SokrVersion_CURRENT` macro which uses compound literals.
+// SAFETY: #[no_mangle] on a static is required for C FFI symbol export.
+// Symbol collision risk is mitigated by the unique `SOKR_VERSION_CURRENT` name.
 #[allow(unsafe_code)]
 #[no_mangle]
 pub static SOKR_VERSION_CURRENT: SokrVersion = SokrVersion {
@@ -199,7 +201,7 @@ pub struct SokrDispatchResponse {
 /// - `handle = 0` is reserved as the "invalid / unset" sentinel
 /// - Valid tokens are always non-zero (assigned by substrate on successful dispatch)
 /// - Callers receiving `handle = 0` on error should not use it for completion queries
-#[repr(C)]
+#[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SokrCompletionToken {
     /// Opaque handle identifying this completion.
@@ -296,17 +298,6 @@ pub struct SokrSubstratePlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_version_compatible_exact() {
-        let core = SokrVersion::CURRENT;
-        let plugin = SokrVersion {
-            major: core.major,
-            minor: core.minor,
-            patch: 0,
-        };
-        assert!(plugin.check_compatible(core).is_ok());
-    }
 
     #[test]
     fn version_compatible_same() {

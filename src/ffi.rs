@@ -185,12 +185,15 @@ pub unsafe extern "C" fn sokr_list_substrates(
         *count_out = total;
     }
 
-    for (written, plugin) in registry.iter().enumerate() {
-        if written >= capacity {
-            return SokrResult::RegistryFull;
-        }
-        unsafe {
-            *substrate_ids_out.add(written) = plugin.substrate_id;
+    // Only write IDs if capacity > 0 (capacity=0 is a count-only query)
+    if capacity > 0 {
+        for (written, plugin) in registry.iter().enumerate() {
+            if written >= capacity {
+                return SokrResult::RegistryFull;
+            }
+            unsafe {
+                *substrate_ids_out.add(written) = plugin.substrate_id;
+            }
         }
     }
 
@@ -209,8 +212,8 @@ pub unsafe extern "C" fn sokr_list_substrates(
 /// - `SokrResult::CapabilityDenied` if no registered substrate accepts the computation
 ///
 /// # Response Contract (Failure Path)
-/// On `InvalidInput` or `CapabilityDenied`, the response is fully zeroed
-/// (`result`, `padding`, `substrate_id`, `estimated_latency_ns`).
+/// On failure (`InvalidInput` or `CapabilityDenied`), the response is fully zeroed
+/// (`result`, `padding`, `substrate_id`, `estimated_latency_ns`) before return.
 /// Callers must not read uninitialized fields.
 ///
 /// # Safety
@@ -228,9 +231,21 @@ pub unsafe extern "C" fn sokr_capability(
 
     // Validate IR data pointer is non-null if length is non-zero
     if query_ref.ir_data_len == 0 {
+        unsafe {
+            (*response).result = SokrResult::InvalidInput;
+            (*response).padding = 0;
+            (*response).substrate_id = 0;
+            (*response).estimated_latency_ns = 0;
+        }
         return SokrResult::InvalidInput;
     }
     if query_ref.ir_format.is_null() || query_ref.ir_data_ptr.is_null() {
+        unsafe {
+            (*response).result = SokrResult::InvalidInput;
+            (*response).padding = 0;
+            (*response).substrate_id = 0;
+            (*response).estimated_latency_ns = 0;
+        }
         return SokrResult::InvalidInput;
     }
 
@@ -1345,5 +1360,65 @@ mod tests {
         assert_eq!(count, 2);
         assert!(ids.contains(&id_a));
         assert!(ids.contains(&id_b));
+    }
+
+    #[test]
+    fn list_substrates_count_only_query() {
+        let _guard = reset_registry();
+
+        let plugin_a = ffi_test_plugin(SokrVersion::CURRENT);
+        let plugin_b = ffi_test_plugin(SokrVersion::CURRENT);
+        let mut id_a = 0;
+        let mut id_b = 0;
+
+        assert_eq!(
+            unsafe { sokr_register_substrate(&plugin_a, &mut id_a) },
+            SokrResult::Ok
+        );
+        assert_eq!(
+            unsafe { sokr_register_substrate(&plugin_b, &mut id_b) },
+            SokrResult::Ok
+        );
+
+        // Count-only query: capacity=0, substrate_ids_out=NULL
+        let mut count = 0usize;
+        let result = unsafe { sokr_list_substrates(core::ptr::null_mut(), 0, &mut count) };
+
+        assert_eq!(result, SokrResult::Ok);
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn list_substrates_truncated_buffer_returns_registry_full() {
+        let _guard = reset_registry();
+
+        // Register 3 substrates
+        let plugin_a = ffi_test_plugin(SokrVersion::CURRENT);
+        let plugin_b = ffi_test_plugin(SokrVersion::CURRENT);
+        let plugin_c = ffi_test_plugin(SokrVersion::CURRENT);
+        let mut id_a = 0;
+        let mut id_b = 0;
+        let mut id_c = 0;
+
+        assert_eq!(
+            unsafe { sokr_register_substrate(&plugin_a, &mut id_a) },
+            SokrResult::Ok
+        );
+        assert_eq!(
+            unsafe { sokr_register_substrate(&plugin_b, &mut id_b) },
+            SokrResult::Ok
+        );
+        assert_eq!(
+            unsafe { sokr_register_substrate(&plugin_c, &mut id_c) },
+            SokrResult::Ok
+        );
+
+        // Try to list with capacity=2 (too small)
+        let mut ids = [0u64; 2];
+        let mut count = 0usize;
+        let result = unsafe { sokr_list_substrates(ids.as_mut_ptr(), ids.len(), &mut count) };
+
+        assert_eq!(result, SokrResult::RegistryFull);
+        assert_eq!(count, 3); // Total count is still reported
     }
 }
