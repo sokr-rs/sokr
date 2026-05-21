@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-22
+
+### Added
+
+- **Integration tests against sokr-cpu**: Full Register → Capability → Dispatch → Completion round-trip tested with reference CPU substrate implementation (6 passing tests).
+- **C header finalized**: `include/sokr.h` auto-generated via `cbindgen`, committed to repo, with drift check in CI pre-commit hooks.
+- **C example**: `examples/c/hello_compute.c` demonstrating complete SOKR workflow in C with build infrastructure.
+- **C++ RAII wrapper**: `include/sokr.hpp` providing type-safe, exception-based C++ bindings with RAII resource management and automatic cleanup.
+- **C++ example**: `examples/cpp/hello_compute.cpp` showing idiomatic C++ usage with error handling.
+- **Dispatch overhead benchmark**: `benches/dispatch_overhead.rs` verifying FFI layer adds < 0.01% overhead vs raw vtable calls (requirement: < 5%).
+- **Feature-gated `std` support**: Crate now conditionally uses `no_std` for bare-metal targets (e.g., thumbv7m-none-eabi) while supporting `std` for tests and examples via default feature.
+- **Auto-regenerating C header**: Pre-commit hook (`header-regenerate`) automatically updates `sokr.h` from Rust types on commit, eliminating header drift.
+
+### Fixed
+
+- **no_std build support restored**: Properly gated via `std` feature; tests build with std for panic unwinding, bare-metal builds use `--no-default-features`.
+- **Core prelude imports**: Added explicit imports from `core::*` for types used in no_std context (Option, Result, Default, Iterator).
+- **CI dependency resolution**: GitHub Actions now checkouts both sokr and sokr-plugins in sibling directories, resolving path dependency for sokr-cpu in tests and benchmarks.
+
 ## [0.2.0] - 2026-05-18
 
 ### Added
@@ -95,7 +114,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This is the **Foundation Release** - the crate reserves the name on crates.io and establishes the architecture, but contains no runnable code. The core ABI types are defined and documented, ready for Phase 1 implementation.
 
-[Unreleased]: https://github.com/sokr-rs/sokr/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/sokr-rs/sokr/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/sokr-rs/sokr/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/sokr-rs/sokr/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/sokr-rs/sokr/releases/tag/v0.1.2
 [0.1.1]: https://github.com/sokr-rs/sokr/releases/tag/v0.1.1

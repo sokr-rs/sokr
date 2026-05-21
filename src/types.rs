@@ -45,10 +45,10 @@ pub struct SokrVersion {
 }
 
 impl SokrVersion {
-    /// Current SOKR core ABI version (0.2.0).
+    /// Current SOKR core ABI version (0.3.0).
     pub const CURRENT: Self = Self {
         major: 0,
-        minor: 2,
+        minor: 3,
         patch: 0,
     };
 
@@ -83,7 +83,7 @@ impl SokrVersion {
 #[no_mangle]
 pub static SOKR_VERSION_CURRENT: SokrVersion = SokrVersion {
     major: 0,
-    minor: 2,
+    minor: 3,
     patch: 0,
 };
 
