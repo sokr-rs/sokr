@@ -14,10 +14,18 @@ jobs:
     name: Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout sokr
+        uses: actions/checkout@v4
+        with:
+          path: sokr
+      - name: Checkout sokr-plugins
+        uses: actions/checkout@v4
+        with:
+          repository: sokr-rs/sokr-plugins
+          path: sokr-plugins
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo check --all-targets
+      - run: cd sokr && cargo check --all-targets
 
   test:
     name: Test
@@ -26,76 +34,120 @@ jobs:
       matrix:
         toolchain: [stable, beta, nightly]
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout sokr
+        uses: actions/checkout@v4
+        with:
+          path: sokr
+      - name: Checkout sokr-plugins
+        uses: actions/checkout@v4
+        with:
+          repository: sokr-rs/sokr-plugins
+          path: sokr-plugins
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.toolchain }}
-      - run: cargo test --all-features
+      - run: cd sokr && cargo test --all-features
 
   fmt:
     name: Format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: sokr
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-      - run: cargo fmt --check
+      - run: cd sokr && cargo fmt --check
 
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout sokr
+        uses: actions/checkout@v4
+        with:
+          path: sokr
+      - name: Checkout sokr-plugins
+        uses: actions/checkout@v4
+        with:
+          repository: sokr-rs/sokr-plugins
+          path: sokr-plugins
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-features -- -D warnings
+      - run: cd sokr && cargo clippy --all-features -- -D warnings
 
   miri:
     name: Miri (nightly, allowed to fail)
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout sokr
+        uses: actions/checkout@v4
+        with:
+          path: sokr
+      - name: Checkout sokr-plugins
+        uses: actions/checkout@v4
+        with:
+          repository: sokr-rs/sokr-plugins
+          path: sokr-plugins
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: miri
       - uses: Swatinem/rust-cache@v2
-      - run: cargo miri test --all-features
+      - run: cd sokr && cargo miri test --all-features
 
   audit:
     name: Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout sokr
+        uses: actions/checkout@v4
+        with:
+          path: sokr
+      - name: Checkout sokr-plugins
+        uses: actions/checkout@v4
+        with:
+          repository: sokr-rs/sokr-plugins
+          path: sokr-plugins
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo install cargo-audit
-      - run: cargo audit --deny warnings
+      - run: cd sokr && cargo audit --deny warnings
 
   no_std:
     name: no_std Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout sokr
+        uses: actions/checkout@v4
+        with:
+          path: sokr
+      - name: Checkout sokr-plugins
+        uses: actions/checkout@v4
+        with:
+          repository: sokr-rs/sokr-plugins
+          path: sokr-plugins
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: thumbv7m-none-eabi
       - uses: Swatinem/rust-cache@v2
-      - run: cargo build --target thumbv7m-none-eabi
+      - run: cd sokr && cargo build --no-default-features --target thumbv7m-none-eabi
 
   header-check:
     name: Header Drift Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: sokr
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo install cbindgen
-      - run: cbindgen --crate sokr --output /tmp/sokr_check.h
-      - run: diff include/sokr.h /tmp/sokr_check.h
+      - run: cd sokr && cbindgen --crate sokr --output /tmp/sokr_check.h
+      - run: cd sokr && diff include/sokr.h /tmp/sokr_check.h
