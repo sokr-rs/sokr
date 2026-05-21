@@ -6,6 +6,7 @@
 #![allow(unsafe_code)]
 
 use core::cell::UnsafeCell;
+use core::marker::Sync;
 
 use crate::registry::Registry;
 use crate::types::{

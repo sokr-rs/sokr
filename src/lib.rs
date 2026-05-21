@@ -25,6 +25,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![deny(unsafe_code)]
 
+#[cfg(not(feature = "std"))]
+extern crate core;
+
 pub mod ffi;
 pub mod registry;
 pub mod types;
