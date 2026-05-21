@@ -1,11 +1,13 @@
-/**
- * Benchmark: SOKR dispatch overhead vs raw vtable call
- *
- * Measures the performance overhead of the SOKR FFI layer compared to
- * direct vtable function calls.
- *
- * Run with: cargo bench --bench dispatch_overhead
- */
+//! Benchmark: SOKR dispatch overhead vs raw vtable call
+//!
+//! Measures the performance overhead of the SOKR FFI layer compared to
+//! direct vtable function calls.
+//!
+//! Run with: cargo bench --bench dispatch_overhead
+
+#![allow(unsafe_code)]
+#![allow(dead_code)]
+
 use std::ffi::c_void;
 
 #[derive(Clone, Copy)]

@@ -22,6 +22,7 @@
 //! three questions is a valid SOKR backend, including substrates that
 //! do not yet exist.
 
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(unsafe_code)]
 
 pub mod ffi;
@@ -30,3 +31,9 @@ pub mod types;
 
 pub use registry::{Registry, MAX_SUBSTRATES};
 pub use types::*;
+
+#[cfg(not(feature = "std"))]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    loop {}
+}

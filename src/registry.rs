@@ -3,6 +3,13 @@
 //! The registry maintains the set of registered substrate plugins and
 //! provides lookup by substrate ID.
 
+#[cfg(not(feature = "std"))]
+use core::default::Default;
+#[cfg(not(feature = "std"))]
+use core::iter::Iterator;
+#[cfg(not(feature = "std"))]
+use core::option::Option;
+
 use crate::types::{SokrResult, SokrSubstratePlugin};
 
 /// Maximum number of substrate plugins that can be registered.
