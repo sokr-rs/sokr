@@ -15,7 +15,7 @@ readme = "README.md"
 
 [lib]
 name = "sokr"
-crate-type = ["rlib"]
+crate-type = ["rlib", "cdylib"]
 
 [features]
 default = []
