@@ -23,6 +23,9 @@ ffi = []
 
 [dependencies]
 
+[dev-dependencies]
+sokr-cpu = { path = "../sokr-plugins/crates/sokr-cpu" }
+
 [lints.rust]
 unsafe_code = "deny"
 missing_docs = "warn"
@@ -33,6 +36,10 @@ pedantic = "warn"
 nursery = "warn"
 
 [profile.dev]
+panic = "abort"
 
 [profile.release]
 panic = "abort"
+
+[profile.test]
+panic = "unwind"

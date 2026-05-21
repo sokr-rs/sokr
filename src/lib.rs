@@ -22,27 +22,11 @@
 //! three questions is a valid SOKR backend, including substrates that
 //! do not yet exist.
 
-#![cfg_attr(not(test), no_std)]
 #![deny(unsafe_code)]
 
-#[cfg(not(test))]
-use core::panic::PanicInfo;
-
-#[cfg(feature = "ffi")]
 pub mod ffi;
 pub mod registry;
 pub mod types;
 
 pub use registry::{Registry, MAX_SUBSTRATES};
 pub use types::*;
-
-// Panic handler for no_std environment.
-// Intentionally spins forever (halts) on panic — this is the no_std equivalent
-// of aborting. In embedded contexts, this prevents undefined behavior from
-// unwinding. The CPU will burn cycles; external watchdog or reset is expected.
-#[cfg(not(test))]
-#[allow(clippy::missing_const_for_fn)]
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
-}

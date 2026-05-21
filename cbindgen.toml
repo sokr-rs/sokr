@@ -1,5 +1,5 @@
 # cbindgen configuration for SOKR C header generation
-# Run: cbindgen --crate sokr --output sokr.h
+# Run: cbindgen --crate sokr --output include/sokr.h
 
 language = "C"
 pragma_once = true

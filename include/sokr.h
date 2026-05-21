@@ -374,7 +374,6 @@ extern "C" {
  */
 extern const struct SokrVersion SOKR_VERSION_CURRENT;
 
-#if defined(SOKR_FFI_ENABLED)
 /**
  * Returns the current SOKR core ABI version.
  *
@@ -383,9 +382,7 @@ extern const struct SokrVersion SOKR_VERSION_CURRENT;
  * Do not free or modify it.
  */
  const struct SokrVersion *sokr_version(void) ;
-#endif
 
-#if defined(SOKR_FFI_ENABLED)
 /**
  * Checks if a plugin version is compatible with this core.
  *
@@ -401,9 +398,7 @@ extern const struct SokrVersion SOKR_VERSION_CURRENT;
  * Pointers must be properly aligned if non-null. Null pointers return `InvalidInput`.
  */
  SokrResult sokr_check_version(const struct SokrVersion *plugin, int32_t *result) ;
-#endif
 
-#if defined(SOKR_FFI_ENABLED)
 /**
  * Registers a substrate plugin with the core registry.
  *
@@ -424,9 +419,7 @@ extern const struct SokrVersion SOKR_VERSION_CURRENT;
 SokrResult sokr_register_substrate(const struct SokrSubstratePlugin *plugin,
                                    uint64_t *substrate_id_out)
 ;
-#endif
 
-#if defined(SOKR_FFI_ENABLED)
 /**
  * Deregisters a substrate plugin by ID.
  *
@@ -436,9 +429,7 @@ SokrResult sokr_register_substrate(const struct SokrSubstratePlugin *plugin,
  * - `SokrResult::NotFound` if ID is unknown
  */
  SokrResult sokr_deregister_substrate(uint64_t substrate_id) ;
-#endif
 
-#if defined(SOKR_FFI_ENABLED)
 /**
  * Lists currently registered substrate IDs.
  *
@@ -461,9 +452,7 @@ SokrResult sokr_list_substrates(uint64_t *substrate_ids_out,
                                 uintptr_t capacity,
                                 uintptr_t *count_out)
 ;
-#endif
 
-#if defined(SOKR_FFI_ENABLED)
 /**
  * Queries a substrate's capability to fulfill a computation.
  *
@@ -488,9 +477,7 @@ SokrResult sokr_list_substrates(uint64_t *substrate_ids_out,
 SokrResult sokr_capability(const struct SokrCapabilityQuery *query,
                            struct SokrCapabilityResponse *response)
 ;
-#endif
 
-#if defined(SOKR_FFI_ENABLED)
 /**
  * Dispatches a computation to a substrate for execution.
  *
@@ -514,9 +501,7 @@ SokrResult sokr_capability(const struct SokrCapabilityQuery *query,
 SokrResult sokr_dispatch(const struct SokrDispatchRequest *request,
                          struct SokrDispatchResponse *response)
 ;
-#endif
 
-#if defined(SOKR_FFI_ENABLED)
 /**
  * Queries the completion status of a dispatched computation.
  *
@@ -544,7 +529,6 @@ SokrResult sokr_dispatch(const struct SokrDispatchRequest *request,
  * Pointers must be properly aligned if non-null. Null pointers return `InvalidInput`.
  */
  SokrResult sokr_completion(const struct SokrCompletionQuery *query, SokrCompletionSignal *signal) ;
-#endif
 
 #ifdef __cplusplus
 }  // extern "C"
