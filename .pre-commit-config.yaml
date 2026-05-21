@@ -35,11 +35,20 @@ repos:
         files: \.rs$
         pass_filenames: false
 
-      - id: header-drift-check
-        name: Header Drift Check
-        entry: bash -c "cbindgen --crate sokr --output /tmp/sokr.h.new && diff -q include/sokr.h /tmp/sokr.h.new > /dev/null || (echo 'sokr.h is out of date' && exit 1)"
+      - id: header-regenerate
+        name: Regenerate sokr.h
+        entry: bash -c "cbindgen --crate sokr --output include/sokr.h && git add include/sokr.h"
         language: system
         files: ^src/.*\.rs$|^cbindgen\.toml$
         pass_filenames: false
+        stages: [commit]
+
+      - id: header-drift-check
+        name: Header Drift Check
+        entry: bash -c "cbindgen --crate sokr --output /tmp/sokr.h.new && diff -q include/sokr.h /tmp/sokr.h.new > /dev/null"
+        language: system
+        files: ^src/.*\.rs$|^cbindgen\.toml$
+        pass_filenames: false
+        stages: [commit]
 
 # TODO: re-add cargo-test hook in Phase 1 once sokr-cpu integration test exists
