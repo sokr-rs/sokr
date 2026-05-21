@@ -1,7 +1,7 @@
 # SOKR — Development TODO
 
 > Sovereign Open Kernel Runtime — Core Only
-> Last Updated: 2026-05-20
+> Last Updated: 2026-05-21
 > Legend: 🔴 Critical path · 🟡 Important · 🟢 Nice-to-have
 
 ---
@@ -181,13 +181,13 @@ and hardware that does not yet exist.
 > Core ABI frozen. `sokr.h` generated and committed.
 > Integration tested against `sokr-plugins` reference implementations.
 
-- [ ] 🔴 Integration test against `sokr-cpu` from `sokr-plugins`
-  - [ ] Register → Capability → Dispatch → Completion round-trip
-  - [ ] Passes against CPU substrate as external dependency
-- [ ] 🔴 `sokr.h` C header finalised and committed to `include/`
-- [ ] 🟡 C example in `examples/c/hello_compute.c`
-- [ ] 🟡 C++ RAII wrapper in `include/sokr.hpp`
-- [ ] 🟡 Benchmark: core dispatch overhead < 5% vs raw vtable call
+- [x] ✅ Integration test against `sokr-cpu` from `sokr-plugins`
+  - [x] Register → Capability → Dispatch → Completion round-trip
+  - [x] Passes against CPU substrate as external dependency (6 tests passing)
+- [x] ✅ `sokr.h` C header finalised and committed to `include/`
+- [x] ✅ C example in `examples/c/hello_compute.c`
+- [x] ✅ C++ RAII wrapper in `include/sokr.hpp`
+- [x] ✅ Benchmark: core dispatch overhead < 5% vs raw vtable call (PASS: < 0.01%)
 
 ---
 
