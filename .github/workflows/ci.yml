@@ -143,9 +143,15 @@ jobs:
     name: Header Drift Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout sokr
+        uses: actions/checkout@v4
         with:
           path: sokr
+      - name: Checkout sokr-plugins
+        uses: actions/checkout@v4
+        with:
+          repository: sokr-rs/sokr-plugins
+          path: sokr-plugins
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo install cbindgen
