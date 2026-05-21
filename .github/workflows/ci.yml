@@ -154,6 +154,8 @@ jobs:
           path: sokr-plugins
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          working-directory: sokr
       - run: cargo install cbindgen
       - run: cd sokr && cbindgen --crate sokr --output /tmp/sokr_check.h
       - run: cd sokr && diff include/sokr.h /tmp/sokr_check.h
