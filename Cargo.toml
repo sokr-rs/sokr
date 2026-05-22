@@ -25,7 +25,6 @@ ffi = []
 [dependencies]
 
 [dev-dependencies]
-sokr-cpu = { path = "../sokr-plugins/crates/sokr-cpu" }
 
 [lints.rust]
 unsafe_code = "deny"
