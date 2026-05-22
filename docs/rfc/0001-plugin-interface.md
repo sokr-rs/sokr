@@ -199,6 +199,24 @@ IR format is a `uint32_t` magic number declared by the IR plugin:
 - `sokr_register_substrate()` — NOT thread-safe, call from one thread only
 - `sokr_deregister_substrate()` — NOT thread-safe, call from one thread only
 
+## Plugin Contract: Re-entrancy
+
+**`destroy_fn` MUST NOT re-enter any sokr_* symbol.**
+
+The core invokes `destroy_fn` while managing the plugin registry. If a
+plugin's destroy function calls back into `sokr_capability()`,
+`sokr_dispatch()`, `sokr_completion()`, `sokr_register_substrate()`, or
+`sokr_deregister_substrate()`, the behaviour is undefined.
+
+This includes:
+- Calling any sokr_* from within a destructor callback
+- Spawning threads from `destroy_fn` that call sokr_* (race condition)
+- Using FFI callbacks or unwinding-safe cleanup that touches sokr_*
+
+**Rationale:** The core's Phase 1.2 registry implementation does not support
+concurrent or re-entrant access. This will be relaxed in v1.0.0 after
+formal verification and introduction of proper locking.
+
 ---
 
 ## Alternatives Considered
