@@ -196,6 +196,8 @@ and hardware that does not yet exist.
 
 > Sovereignty claim backed by proof, not just philosophy.
 
+**Parent tracking issue:** [#4 Pre-1.0 ABI hardening — Phase 3 dependency](https://github.com/sokr-rs/sokr/issues/4)
+
 - [ ] 🟢 Survey seL4 capability model for applicable formal methods
 - [ ] 🟢 Specify version handshake protocol in TLA+ or Alloy
 - [ ] 🟢 Verify ABI memory safety invariants with Miri and KLEE
