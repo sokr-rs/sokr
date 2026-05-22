@@ -51,11 +51,12 @@ and hardware that does not yet exist.
 - [x] 🔴 Architecture layering documented
 - [x] 🔴 C ABI surface specification complete
 - [x] 🔴 Version handshake protocol complete
-- [ ] 🟡 Plugin interface RFC — open for community comment before v0.2.0 freeze
+- [x] 🟡 Plugin interface RFC — open for community comment before v0.2.0 freeze
   - [x] Write RFC document in `docs/rfc/0001-plugin-interface.md`
   - [x] Open GitHub Discussion: https://github.com/sokr-rs/sokr/discussions/2
   - [x] Set comment period: minimum 4 weeks (closes 2026-05-14)
-  - [ ] Incorporate feedback or document rationale for rejection
+  - [x] Incorporate feedback or document rationale for rejection
+        → Resolved in docs/rfc/0001-plugin-interface.md#resolution (2026-05-14)
 
 ### 0.3 Tooling
 

@@ -228,6 +228,23 @@ Signed-off-by: Bob Contributor <bob@example.com>
 
 ---
 
+## Semver Compliance
+
+The SOKR core follows **semantic versioning**. Pull requests to `main` are checked for breaking ABI changes using `cargo-semver-checks`.
+
+### Semver-break override
+
+If a PR intentionally contains a breaking API change backed by an approved RFC, apply the GitHub label `semver-break-ok` to your pull request. The semver CI job will skip when this label is present.
+
+```bash
+# CLI example (if using gh):
+gh pr edit <number> --add-label semver-break-ok
+```
+
+Breaking changes without an approved RFC will fail CI.
+
+---
+
 ## Copyright Assignment
 
 By contributing to SOKR, you agree that:

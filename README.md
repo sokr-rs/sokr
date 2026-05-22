@@ -91,17 +91,32 @@ non-GPU substrates is a question the plugin layer answers, not the core.
 ## Repository Structure
 
 ```
-sokr/                    ← this repo (sokr-rs/sokr)
+sokr/                          ← this repo (sokr-rs/sokr)
 ├── src/
-│   ├── lib.rs           ← crate root, no_std
-│   ├── types.rs         ← C ABI struct and enum definitions
-│   ├── registry.rs      ← plugin registry
-│   └── ffi.rs           ← #[no_mangle] extern "C" exports
+│   ├── lib.rs                 ← crate root, no_std
+│   ├── types.rs               ← C ABI struct and enum definitions
+│   ├── registry.rs            ← plugin registry
+│   └── ffi.rs                 ← #[no_mangle] extern "C" exports
+├── include/
+│   ├── sokr.h                 ← generated C header (committed)
+│   └── sokr.hpp               ← C++ RAII wrapper
+├── examples/
+│   ├── c/hello_compute.c      ← C usage example
+│   └── cpp/hello_compute.cpp  ← C++ usage example
+├── benches/
+│   └── dispatch_overhead.rs   ← FFI overhead benchmark (<0.01%)
 ├── docs/
-│   ├── rfc/             ← RFC documents
-│   └── references.md    ← curated references
-├── Cargo.toml           ← single crate, no workspace
-└── cbindgen.toml        ← C header generation config
+│   ├── rfc/                   ← RFC documents
+│   └── references.md          ← curated references
+├── xtask/                     ← cargo xtask (header generation)
+├── agents/                    ← harness agent definitions
+├── audit.toml                 ← cargo-audit configuration
+├── deny.toml                  ← cargo-deny license/dep policy
+├── cbindgen.toml              ← C header generation config
+├── ARCHITECTURE.md
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+└── TODO.md
 ```
 
 Plugins: [github.com/sokr-rs/sokr-plugins](https://github.com/sokr-rs/sokr-plugins)

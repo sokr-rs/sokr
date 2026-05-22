@@ -1,8 +1,8 @@
 # RFC 0001: Plugin Interface
 
-**Status:** Open for comment (4 week period)
+**Status:** Closed — resolved 2026-05-14
 **Opened:** 2026-04-16
-**Closes:** 2026-05-14 (4 weeks)
+**Closed:** 2026-05-14 (4 week comment period)
 **Tracking:** https://github.com/sokr-rs/sokr/discussions/2
 
 ---
@@ -68,16 +68,16 @@ typedef struct {
 } SokrVersion;
 
 typedef enum {
-    SOKR_OK                    = 0,
-    SOKR_CAPABILITY_DENIED     = 1,
-    SOKR_DISPATCH_FAILED       = 2,
-    SOKR_TIMEOUT               = 3,
-    SOKR_VERSION_MISMATCH      = 4,
-    SOKR_NO_CAPABLE_SUBSTRATE  = 5,
-    SOKR_INVALID_INPUT         = 6,
-    SOKR_INVALID_IR            = 7,
-    SOKR_NOT_FOUND             = 8,
-    SOKR_REGISTRY_FULL         = 9,
+    SOKR_RESULT_OK                    = 0,
+    SOKR_RESULT_CAPABILITY_DENIED     = 1,
+    SOKR_RESULT_DISPATCH_FAILED       = 2,
+    SOKR_RESULT_TIMEOUT               = 3,
+    SOKR_RESULT_VERSION_MISMATCH      = 4,
+    SOKR_RESULT_NO_CAPABLE_SUBSTRATE  = 5,
+    SOKR_RESULT_INVALID_INPUT         = 6,
+    SOKR_RESULT_INVALID_IR            = 7,
+    SOKR_RESULT_NOT_FOUND             = 8,
+    SOKR_RESULT_REGISTRY_FULL         = 9,
 } SokrResult;
 
 typedef struct {
@@ -119,10 +119,10 @@ typedef struct {
 } SokrCompletionQuery;
 
 typedef enum {
-    SOKR_COMPLETION_PENDING  = 0,
-    SOKR_COMPLETION_COMPLETE = 1,
-    SOKR_COMPLETION_FAILED   = 2,
-    SOKR_COMPLETION_TIMEDOUT = 3,
+    SOKR_COMPLETION_SIGNAL_PENDING  = 0,
+    SOKR_COMPLETION_SIGNAL_COMPLETE = 1,
+    SOKR_COMPLETION_SIGNAL_FAILED   = 2,
+    SOKR_COMPLETION_SIGNAL_TIMED_OUT = 3,
 } SokrCompletionSignal;
 
 typedef struct {
@@ -131,6 +131,8 @@ typedef struct {
     SokrResult  (*dispatch_fn)(const SokrDispatchRequest*, SokrDispatchResponse*);
     SokrResult  (*completion_fn)(const SokrCompletionQuery*, SokrCompletionSignal*);
     void        (*destroy_fn)(void);
+    uint64_t      substrate_id;
+    uint8_t       padding[8];
 } SokrSubstratePlugin;
 ```
 
@@ -164,7 +166,7 @@ IR format is a `uint32_t` magic number declared by the IR plugin:
 1. Core calls `plugin.version_fn()` during registration
 2. Plugin returns its compiled-in `SokrVersion`
 3. Core compares against `SokrVersion::current()`
-4. Incompatible → `SOKR_VERSION_MISMATCH` returned, plugin not registered
+4. Incompatible → `SOKR_RESULT_VERSION_MISMATCH` returned, plugin not registered
 5. Compatible → plugin assigned a `substrate_id`, registration succeeds
 
 ### Version Bump Triggers
@@ -244,13 +246,32 @@ change or a documented rationale for keeping the current design.
 
 ---
 
-## Decision Log
+## Resolution
 
-*This section is populated as feedback is received and decisions are made.*
+Comment period closed 2026-05-14. All five open questions resolved:
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | `uint64_t` vs 128-bit completion token | Keep `uint64_t` — sufficient for single-process registries; 128-bit adds ABI cost with no benefit at current scale |
+| 2 | `estimated_latency_ns` mandatory vs optional | Zero = unknown; field stays mandatory, callers must treat 0 as "no estimate" |
+| 3 | `params` schema | Fully opaque — substrate-defined; IR plugin documents expected format |
+| 4 | Thread safety contract | Accepted as-is — register/deregister single-threaded; capability/dispatch/completion concurrent |
+| 5 | `sokr_list_substrates` in core vs plugin | Kept in core as `sokr_list_substrates()`; implemented in v0.2.0 |
+
+No changes to the interface were required. All decisions accepted by
+silence (no objections during comment period).
+
+---
+
+## Decision Log
 
 | Date | Question | Decision | Rationale |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-05-14 | 1 | `uint64_t` sufficient for token | Collision probability negligible in single-process registries |
+| 2026-05-14 | 2 | `estimated_latency_ns` remains mandatory | Zero value is the undefined-latency marker |
+| 2026-05-14 | 3 | `params` remain opaque | Substrate-plugin-defined schema; introspection via IR plugin if needed |
+| 2026-05-14 | 4 | Thread safety contract accepted | Register/deregister serialization burden acceptable; no lock needed for query functions |
+| 2026-05-14 | 5 | `sokr_list_substrates` in core | Introspection is first-class; function was implemented in v0.2.0 |
 
 ---
 
