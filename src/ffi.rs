@@ -1,5 +1,21 @@
 //! C FFI exports for SOKR core.
 //!
+//! # SOKR Core C ABI Surface
+//!
+//! ## Thread Safety Contract (v0.3.x)
+//!
+//! All sokr_* symbols are **SINGLE-THREADED ONLY** until v1.0.0.
+//! Concurrent calls from multiple threads are undefined behaviour.
+//!
+//! ### Safe usage patterns:
+//! - `sokr_register_substrate()` and `sokr_deregister_substrate()` from one thread only
+//! - `sokr_capability()`, `sokr_dispatch()`, `sokr_completion()` may be called concurrently
+//!   **ONLY** after all registration/deregistration is complete and from a single thread
+//!
+//! This limitation will be removed in v1.0.0 with the introduction of proper
+//! synchronization primitives (reader-writer locks or thread-safe registry).
+//! See [GitHub issue #4](https://github.com/sokr-rs/sokr/issues/4) for Phase 3 planning.
+//!
 //! This module contains all `#[no_mangle] extern "C"` functions.
 //! It is the only module that uses unsafe code.
 
