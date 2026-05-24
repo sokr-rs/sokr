@@ -41,7 +41,7 @@ coverage/
 .windsurf/rules/skill-context.md
 
 # Agent and memory
-CLAUDE.local.md
+CLAUDE.md
 .claude/
 .harness-mem/
 agents
