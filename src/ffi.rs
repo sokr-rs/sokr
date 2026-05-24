@@ -334,14 +334,29 @@ pub unsafe extern "C" fn sokr_dispatch(
 
     // Validate IR data pointer is non-null if length is non-zero
     if request_ref.ir_data_len == 0 {
+        unsafe {
+            (*response).result = SokrResult::InvalidInput;
+            (*response).padding = 0;
+            (*response).completion_token.handle = 0;
+        }
         return SokrResult::InvalidInput;
     }
     if request_ref.ir_data_ptr.is_null() {
+        unsafe {
+            (*response).result = SokrResult::InvalidInput;
+            (*response).padding = 0;
+            (*response).completion_token.handle = 0;
+        }
         return SokrResult::InvalidInput;
     }
 
     // Validate params pointer is non-null if length is non-zero
     if request_ref.params_len > 0 && request_ref.params_ptr.is_null() {
+        unsafe {
+            (*response).result = SokrResult::InvalidInput;
+            (*response).padding = 0;
+            (*response).completion_token.handle = 0;
+        }
         return SokrResult::InvalidInput;
     }
 
@@ -639,11 +654,65 @@ mod tests {
         let mut response = SokrDispatchResponse {
             result: SokrResult::Ok,
             padding: 0,
-            completion_token: crate::types::SokrCompletionToken { handle: 0 },
+            completion_token: crate::types::SokrCompletionToken {
+                handle: 0xDEAD_BEEF,
+            },
         };
 
         let result = unsafe { sokr_dispatch(&request, &mut response) };
         assert_eq!(result, SokrResult::InvalidInput);
+        assert_eq!(response.result, SokrResult::InvalidInput);
+        assert_eq!(response.completion_token.handle, 0);
+    }
+
+    #[test]
+    fn dispatch_null_ir_data_ptr_returns_invalid_input() {
+        let request = SokrDispatchRequest {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            substrate_id: 0,
+            ir_data_ptr: core::ptr::null(),
+            ir_data_len: 1,
+            params_ptr: core::ptr::null(),
+            params_len: 0,
+            padding: [0; 16],
+        };
+        let mut response = SokrDispatchResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            completion_token: crate::types::SokrCompletionToken {
+                handle: 0xDEAD_BEEF,
+            },
+        };
+
+        let result = unsafe { sokr_dispatch(&request, &mut response) };
+        assert_eq!(result, SokrResult::InvalidInput);
+        assert_eq!(response.result, SokrResult::InvalidInput);
+        assert_eq!(response.completion_token.handle, 0);
+    }
+
+    #[test]
+    fn dispatch_null_params_ptr_with_nonzero_len_returns_invalid_input() {
+        let request = SokrDispatchRequest {
+            computation_id: crate::types::SokrComputationId { high: 1, low: 2 },
+            substrate_id: 0,
+            ir_data_ptr: &0u8 as *const u8 as *const core::ffi::c_void,
+            ir_data_len: 1,
+            params_ptr: core::ptr::null(),
+            params_len: 4,
+            padding: [0; 16],
+        };
+        let mut response = SokrDispatchResponse {
+            result: SokrResult::Ok,
+            padding: 0,
+            completion_token: crate::types::SokrCompletionToken {
+                handle: 0xDEAD_BEEF,
+            },
+        };
+
+        let result = unsafe { sokr_dispatch(&request, &mut response) };
+        assert_eq!(result, SokrResult::InvalidInput);
+        assert_eq!(response.result, SokrResult::InvalidInput);
+        assert_eq!(response.completion_token.handle, 0);
     }
 
     #[test]

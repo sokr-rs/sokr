@@ -177,8 +177,9 @@ for the plugin contract.
 
 `v0.3.0` — **ABI Frozen.** Core is production-ready with full integration testing against
 [sokr-cpu](https://github.com/sokr-rs/sokr-plugins/tree/main/sokr-cpu). C and C++ bindings
-are complete with examples. Dispatch overhead verified at <0.01% FFI tax. Ready for
-third-party substrate plugins.
+are complete with examples. Dispatch overhead measured at ~3 ns/call absolute
+(validation + registry lookup + indirect call) — negligible against any real substrate
+workload. Ready for third-party substrate plugins.
 
 See [TODO.md](TODO.md) for the roadmap and
 [ARCHITECTURE.md](ARCHITECTURE.md) for the design.

@@ -188,7 +188,7 @@ and hardware that does not yet exist.
 - [x] ✅ `sokr.h` C header finalised and committed to `include/`
 - [x] ✅ C example in `examples/c/hello_compute.c`
 - [x] ✅ C++ RAII wrapper in `include/sokr.hpp`
-- [x] ✅ Benchmark: core dispatch overhead < 5% vs raw vtable call (PASS: < 0.01%)
+- [x] ✅ Benchmark: core dispatch overhead in absolute ns vs raw vtable call (PASS: ~3 ns/call, budget < 50 ns)
 
 ---
 

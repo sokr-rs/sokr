@@ -17,6 +17,10 @@ readme = "README.md"
 name = "sokr"
 crate-type = ["rlib", "cdylib"]
 
+[[bench]]
+name = "dispatch_overhead"
+harness = false
+
 [features]
 default = ["std"]
 std = []

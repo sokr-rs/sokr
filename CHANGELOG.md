@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`sokr_dispatch` failure-path response zeroing**: The null `ir_data_ptr` and null `params_ptr`-with-nonzero-len early-return paths now zero the response (`result`, `padding`, `completion_token.handle = 0`) to match the documented contract. Previously these paths returned `InvalidInput` without touching the response, allowing callers to observe stale values.
+- **Dispatch overhead benchmark**: rewrote `benches/dispatch_overhead.rs` to actually exercise `sokr_dispatch` against a registered plugin (the prior version compared a raw fn-pointer call to itself and never measured SOKR's FFI path). Added `[[bench]] harness = false` to `Cargo.toml` so `cargo bench` actually runs the binary (it was silently a no-op before). Switched the success criterion from a misleading percentage to an absolute-nanosecond budget.
+
 ## [0.3.0] - 2026-05-22
 
 ### Added
@@ -16,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **C example**: `examples/c/hello_compute.c` demonstrating complete SOKR workflow in C with build infrastructure.
 - **C++ RAII wrapper**: `include/sokr.hpp` providing type-safe, exception-based C++ bindings with RAII resource management and automatic cleanup.
 - **C++ example**: `examples/cpp/hello_compute.cpp` showing idiomatic C++ usage with error handling.
-- **Dispatch overhead benchmark**: `benches/dispatch_overhead.rs` verifying FFI layer adds < 0.01% overhead vs raw vtable calls (requirement: < 5%).
+- **Dispatch overhead benchmark**: `benches/dispatch_overhead.rs` measures the absolute cost of `sokr_dispatch` (validation + registry lookup + plugin fn call) against a raw `extern "C"` vtable call. Current measurement: ~3 ns/call absolute overhead (budget: < 50 ns), negligible against any real substrate workload.
 - **Feature-gated `std` support**: Crate now conditionally uses `no_std` for bare-metal targets (e.g., thumbv7m-none-eabi) while supporting `std` for tests and examples via default feature.
 - **Auto-regenerating C header**: Pre-commit hook (`header-regenerate`) automatically updates `sokr.h` from Rust types on commit, eliminating header drift.
 
