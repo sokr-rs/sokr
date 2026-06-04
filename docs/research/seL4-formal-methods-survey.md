@@ -144,13 +144,15 @@ A capability is an **unforgeable reference** to a kernel object with delegable a
 
 **Tools**: TLA+ Toolbox (free)
 
-### Phase 2 (Weeks 3–4): Pointer Safety Audit
+### Phase 2 (Weeks 3–4): Pointer Safety Audit & Miri CI
 
-**Deliverable**: FFI safety report + updated code + Miri CI job
+**Deliverable**: FFI safety report + Miri CI job + property-based pointer tests + updated code comments
 
 **Time**: 5–7 person-days
 
-**Tools**: Miri, loom, cargo-fuzz
+**Tools**: Miri (primary), cargo-fuzz (property-based testing), manual audit for lifetime contracts
+
+**Note**: KLEE is not pursued; Rust has no maintained KLEE frontend. Miri alone is sufficient for FFI boundary safety verification.
 
 ### Phase 3 (Weeks 5–7, Optional): Alloy Model of Dispatch
 
@@ -194,7 +196,7 @@ A capability is an **unforgeable reference** to a kernel object with delegable a
 
 ## References
 
-1. Klein, et al. (2009). "seL4: Formal Verification of an OS Kernel." *PLDI*. Introduces three-layer proof stack, refinement methodology, CompCert integration.
+1. Klein, et al. (2009). "seL4: Formal Verification of an OS Kernel." *SOSP 2009*. Introduces three-layer proof stack, refinement methodology, CompCert integration.
 
 2. Elphinstone & Heiser (2013). "From L3 to seL4: What Have We Learnt?" *SOSP*. Lessons on verifiability and architecture.
 
@@ -206,11 +208,15 @@ A capability is an **unforgeable reference** to a kernel object with delegable a
 
 ---
 
-## Next Steps
+## Phase 3.2+ Planning Notes
 
-1. **Confirm interest in Phase 1 (TLA+ formalization)**. Timeline preference? (4–8 weeks effort)
-2. **Should Miri be added to CI immediately**, or after Phase 1?
-3. **Any specific version compatibility edge case** to explore first? (e.g., major=0 handling?)
+**Design questions to resolve during TLA+ formalization (Task 3.2)**:
+
+1. **Major version 0 semantics**: SOKR is currently at v0.3.0 (major=0). The version handshake check treats major=0 the same as any major version. Confirm: should major=0 allow breaking minor bumps, or should we enforce minor-only compatibility until v1.0?
+
+2. **Handle reuse after dispatch failure**: When `sokr_dispatch` returns `NoCapableSubstrate`, the handle is zeroed. Verify: is there a race where callers can reuse the handle before it is zeroed?
+
+3. **TLA+ artifact path**: The research doc recommends `docs/formal-spec.tla`. Confirm this path before Task 3.2 implementation so Task 3.4 can reference it.
 
 ---
 
