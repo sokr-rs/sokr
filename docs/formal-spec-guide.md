@@ -1,256 +1,161 @@
 # SOKR Version Handshake Formal Specification
 
-**Status**: Complete (Task 3.2)
-**Tool**: TLA+ with TLC Model Checker
-**Artifact**: `docs/formal-spec.tla`
+**Status**: Verified — passes TLC (Task 3.2)
+**Tool**: TLA+ / TLC model checker 2.19
+**Artifacts**: `docs/formal_spec.tla`, `docs/formal_spec.cfg`
 
 ---
 
 ## Overview
 
-This document describes the formal specification of SOKR's plugin version handshake protocol. The specification proves that the compatibility rules are sufficient to prevent incompatible plugins from being registered.
+This document describes the formal specification of SOKR's plugin version
+handshake and the result of model-checking it. The specification models the
+core's plugin registry and the version-compatibility gate enforced at
+registration time, and proves (by exhaustive state exploration) that an
+incompatible plugin can never occupy a registry slot.
 
-**Formal claim**: If a plugin passes the version compatibility check at registration time, it will never become incompatible during its lifetime.
-
----
-
-## What Gets Specified
-
-The TLA+ module `sokr_version_spec` formalizes:
-
-1. **State machine**: Plugin registry with register/deregister transitions
-2. **Compatibility logic**: The `CheckVersionCompatible()` function from `src/types.rs`
-3. **Registration protocol**: Plugins can only be registered if compatible
-4. **Invariants**: Properties that hold in every reachable state
-5. **Theorems**: Safety and liveness properties proven by TLC
+**Verified claim**: every plugin present in the registry satisfies the
+compatibility rule. The model checker explored all reachable states and found
+no violation of this or any other asserted invariant.
 
 ---
 
-## Compatibility Rules (Formalized)
+## What the spec models
 
-The spec formalizes these rules from `src/types.rs:check_compatible()`:
+The TLA+ module `formal_spec` captures:
 
-```
-CheckVersionCompatible(plugin_major, plugin_minor, core_major, core_minor) ==
-  /\ plugin_major = core_major        (* Major must match exactly *)
-  /\ plugin_minor <= core_minor       (* Plugin minor must be ≤ core minor *)
-```
+1. **State**: a fixed-size registry (`[1..MaxSubstrates -> Entry ∪ {NULL}]`) and
+   the set of active plugin ids.
+2. **Compatibility rule**: `VersionCompatible(major, minor)`, mirroring
+   `SokrVersion::check_compatible` (`src/types.rs:65`).
+3. **Transitions**: `Register` (compatible plugin takes an empty slot),
+   `RejectIncompatible` (incompatible attempt leaves state unchanged), and
+   `Deregister` (clears a slot).
+4. **Invariants**: six safety properties checked by TLC.
 
-**Patch version**: Ignored (informational only).
-
-**Rationale**:
-- Major version must match to ensure ABI struct layouts, function signatures, and error codes are identical
-- Plugin minor must be ≤ core minor to ensure the plugin doesn't use features the core doesn't expose
-- Patch is ignored because it doesn't change the ABI surface
-
----
-
-## State Machine
-
-### States
-
-- **Registry**: A map from slot index (1..MAX_SUBSTRATES) to plugin entry or NULL
-- **Active plugins**: Set of currently registered plugin IDs
-- **Timestamp**: Logical clock for causality ordering
-
-### Transitions
-
-**RegisterPlugin(id, major, minor, patch)**
-- Precondition: Plugin ID is new, there's an empty registry slot, and version is compatible
-- Effect: Plugin entry is written to an empty slot
-
-**RegisterPluginIncompatible(id, major, minor, patch)**
-- Precondition: Version is incompatible
-- Effect: Registration is rejected; registry unchanged; violation flag set
-
-**DeregisterPlugin(id)**
-- Precondition: Plugin is in active set
-- Effect: Slot is emptied, plugin removed from active set
+Patch version is intentionally omitted from the model: the compatibility rule
+ignores it, so modeling it would only inflate the state space.
 
 ---
 
-## Invariants
+## Where the rule actually lives (code mapping)
 
-### Invariant 1: Version Compatibility Guarantee
+The compatibility gate is enforced at the FFI boundary, not in the registry
+itself. `Registry::register_with_id` (`src/registry.rs`) only checks capacity;
+the version check is in the FFI entry point:
 
-```tla
-VersionCompatibilityInvariant ==
-  \forall idx \in 1..MAX_SUBSTRATES :
-    registry[idx] /= NULL =>
-      CheckVersionCompatible(
-        registry[idx].version.major,
-        registry[idx].version.minor,
-        CORE_MAJOR, CORE_MINOR) = TRUE
+```rust
+// src/ffi.rs:136
+let compatibility = plugin_value.version.check_compatible(SokrVersion::CURRENT);
+if compatibility != SokrResult::Ok {
+    return SokrResult::VersionMismatch;
+}
 ```
 
-**Meaning**: Every plugin in the registry satisfies the compatibility check. This is the core safety property.
-
-### Invariant 2: Registry Consistency
-
-```tla
-RegistryConsistencyInvariant ==
-  active_plugins = { registry[idx].id : idx \in registry where idx /= NULL }
-```
-
-**Meaning**: The set of active plugins matches the set of non-NULL registry entries.
-
-### Invariant 3: No Duplicate IDs
-
-```tla
-NoDuplicatePluginsInvariant ==
-  \forall idx1, idx2 : registry[idx1].id = registry[idx2].id => idx1 = idx2
-```
-
-**Meaning**: Each plugin ID appears at most once in the registry.
-
-### Invariant 4: Registry Capacity
-
-```tla
-RegistryCapacityInvariant ==
-  Cardinality(active_plugins) <= MAX_SUBSTRATES
-```
-
-**Meaning**: The number of registered plugins never exceeds the fixed-size array capacity.
+| TLA+ | Code |
+|------|------|
+| `VersionCompatible(m, n)` | `SokrVersion::check_compatible` (`src/types.rs:65`) |
+| `Register(p, m, n)` guard | version gate in `sokr_register_substrate` (`src/ffi.rs:136`) |
+| `registry` / `Slots` | `Registry.substrates: [Option<…>; MAX_SUBSTRATES]` (`src/registry.rs`) |
+| `Deregister(p)` | `sokr_deregister_substrate` (`src/ffi.rs:161`) |
+| `MaxSubstrates` | `MAX_SUBSTRATES = 16` (`src/registry.rs:13`) |
 
 ---
 
-## Theorems
+## Invariants checked
 
-### Theorem 1: Invariant Preservation
+| Invariant | Meaning |
+|-----------|---------|
+| `TypeOK` | State stays well-typed (registry entries are valid records or `NULL`). |
+| `VersionCompatibilityInvariant` | **Core safety.** Every registered plugin satisfies the compatibility rule — incompatible plugins never occupy a slot. |
+| `RegistryConsistencyInvariant` | The `active` set exactly mirrors the registry contents. |
+| `NoDuplicateInvariant` | Each plugin id occupies at most one slot. |
+| `CapacityInvariant` | The registry never exceeds `MaxSubstrates`. |
+| `CompatibilityDecisionInvariant` | The decision is exactly the semantic rule `m = CoreMajor ∧ n ≤ CoreMinor` (no inverted/off-by-one condition). |
 
-If all invariants hold in state S and we execute one transition, all invariants hold in the resulting state S'.
-
-**Verification**: TLC model checker proves this by exploring all reachable states.
-
-### Theorem 2: Compatibility Decision
-
-```tla
-CheckVersionCompatible(major, minor, CORE_MAJOR, CORE_MINOR) = TRUE
-  <=> (major = CORE_MAJOR /\ minor <= CORE_MINOR)
-```
-
-**Meaning**: The function is a faithful implementation of the semantic rule (no off-by-one, no inverted conditions).
-
-### Theorem 3: Liveness - Compatible Plugins Register
-
-If a plugin has a compatible version and there's a free registry slot, a step sequence exists where the plugin gets registered.
-
-**Implication**: The system is not deadlocked for compatible plugins.
-
-### Theorem 4: Safety - Incompatible Plugins Never Register (Key Theorem)
-
-```tla
-(PLUGIN_MAJOR /= CORE_MAJOR \/ PLUGIN_MINOR > CORE_MINOR)
-  => [](~(plugin_id in registry))
-```
-
-**Meaning**: If a plugin's version is incompatible, it can never be registered, no matter how many steps execute.
-
-**This is the strongest safety guarantee we can prove.**
+Liveness (e.g. "a compatible plugin can always eventually register") is out of
+scope for this pass; only safety invariants are asserted.
 
 ---
 
-## How to Run the Model Checker
+## How to run TLC
 
-### Prerequisites
+Download `tla2tools.jar` (TLC 2.19+) from
+<https://github.com/tlaplus/tlaplus/releases/latest> and run:
 
-1. **Install TLA+ Toolbox**: Download from https://lamport.azurewebsites.net/tla/toolbox.html
-2. **Or use TLC command-line**:
-   ```bash
-   java -jar tla2tools.jar docs/formal-spec.tla
-   ```
-
-### Basic Check (5 minutes)
-
-Model-check with small constants to find easy violations:
-
-```tla
-CONSTANT MAX_SUBSTRATES = 4
-CONSTANT CORE_MAJOR = 0
-CONSTANT CORE_MINOR = 3
-CONSTANT CORE_PATCH = 0
-CONSTANT PLUGIN_MAJOR = 0
-CONSTANT PLUGIN_MINOR = 2
-CONSTANT PLUGIN_PATCH = 0
+```bash
+cd docs
+java -cp /path/to/tla2tools.jar tlc2.TLC -config formal_spec.cfg formal_spec.tla
 ```
 
-**Expected result**: `No errors`
+The committed `formal_spec.cfg` fixes the core version at 0.3 (matching
+`SokrVersion::CURRENT`) and sweeps plugin versions over `Majors = {0,1}`,
+`Minors = {0,1,2,3,4}` so every rejection path is exercised: wrong major (1)
+and minor-too-high (4 > 3). `MaxSubstrates = 3` and three plugin ids exercise
+capacity and duplicate-id boundaries.
 
-### Larger Configuration (15–30 minutes)
+### Verification result
 
-```tla
-CONSTANT MAX_SUBSTRATES = 16
-CONSTANT CORE_MAJOR = 0
-CONSTANT CORE_MINOR = 3
-CONSTANT CORE_PATCH = 0
-CONSTANT PLUGIN_MAJOR \in 0..2
-CONSTANT PLUGIN_MINOR \in 0..5
-CONSTANT PLUGIN_PATCH \in 0..2
+```
+TLC2 Version 2.19 of 08 August 2024
+Model checking completed. No error has been found.
+10063 states generated, 709 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 4.
 ```
 
-**Expected result**: All states reachable, all invariants hold, theorems verified.
+All six invariants hold across all 709 reachable states.
 
-### Check Incompatible Plugin Rejection
+### Negative control
 
-Verify that incompatible plugins are *never* registered:
+To confirm the check is not vacuous, a throwaway run asserted the deliberately
+false invariant `active = {}` ("nothing is ever registered"). TLC correctly
+reported a violation and produced a counterexample reaching the `Register`
+action:
 
-```tla
-CONSTANT MAX_SUBSTRATES = 4
-CONSTANT CORE_MAJOR = 0
-CONSTANT CORE_MINOR = 3
-CONSTANT PLUGIN_MAJOR = 1  (* Different major: incompatible *)
-CONSTANT PLUGIN_MINOR = 0
-CONSTANT PLUGIN_PATCH = 0
+```
+Error: Invariant NeverRegistersInvariant is violated.
+Error: The behavior up to this point is:
+State 2: <Register ... of module formal_spec_neg>
 ```
 
-**Expected result**: `version_mismatch_detected` is TRUE but plugin never appears in registry.
+This demonstrates TLC genuinely explores the registration path, so the clean
+pass on the real invariants is meaningful.
 
 ---
 
 ## Limitations
 
-### Out of Scope (By Design)
+Out of scope by design:
 
-1. **Memory safety**: Assumes pointers are valid and alignment is correct (checked by Miri in Task 3.3)
-2. **Concurrency**: Assumes FFI calls are single-threaded (per ABI contract)
-3. **Timing**: No timeout or latency analysis
-4. **Hardware**: No CPU, cache, or speculative execution modeling
+1. **Memory safety** — pointer validity/alignment is verified separately by Miri
+   (Task 3.3), not by this model.
+2. **Concurrency** — the ABI contract is single-threaded for registration; the
+   model assumes atomic transitions.
+3. **Timing / hardware** — no latency, cache, or speculative-execution modeling.
 
-### Assumptions
+Assumptions:
 
-1. **Version numbers are accurate**: The spec assumes `CORE_MAJOR`, `CORE_MINOR` truly reflect the ABI version
-2. **Timestamp uniqueness**: Assumes logical timestamps don't overflow (Nat can be arbitrarily large in TLA+)
-3. **Deterministic transitions**: All transitions are atomic and observable
-
----
-
-## Mapping to Code
-
-The TLA+ spec maps directly to SOKR source:
-
-| TLA+ | Code | Meaning |
-|------|------|---------|
-| `CheckVersionCompatible(a, b, c, d)` | `SokrVersion::check_compatible()` | Compatibility rule |
-| `registry[idx]` | `REGISTRY[idx]` in `src/registry.rs` | Plugin slot |
-| `active_plugins` | Active plugin count / deregistration tracking | Derived from registry state |
-| `RegisterPlugin()` | `sokr_register_substrate()` in `src/ffi.rs` | Registration FFI call |
-| `DeregisterPlugin()` | `sokr_deregister_substrate()` | Deregistration FFI call |
+1. `CoreMajor`/`CoreMinor` faithfully reflect the ABI version.
+2. The bounded version ranges in the `.cfg` are representative — they cover
+   equal/lower/higher major and minor relative to the core, which are the only
+   classes the rule distinguishes.
 
 ---
 
-## Next Steps
+## Next steps
 
-1. **Task 3.3**: Pointer safety audit (Miri + property-based tests for FFI boundaries)
-2. **Task 3.4**: Publish formal spec and create `docs/formal-spec.md` with this guide
+- **Task 3.3**: pointer safety audit (Miri + property-based tests for FFI boundaries).
+- **Task 3.4**: fold this spec and its result into the published `docs/formal-spec.md`.
 
 ---
 
 ## References
 
-1. **Lamport, L.** "Specifying Systems: The TLA+ Language and Tools for Hardware and Software Engineers." Addison-Wesley, 2002.
-2. **TLA+ Toolbox**: https://lamport.azurewebsites.net/tla/toolbox.html
-3. **TLC Model Checker Documentation**: https://lamport.azurewebsites.net/tla/current-tools.html
-4. **SOKR Source**: `src/types.rs` (SokrVersion), `src/ffi.rs` (registration/deregistration), `src/registry.rs` (plugin registry)
+1. Lamport, L. (2002). *Specifying Systems: The TLA+ Language and Tools for
+   Hardware and Software Engineers.* Addison-Wesley.
+2. TLA+ tools: <https://github.com/tlaplus/tlaplus>
+3. SOKR source: `src/types.rs` (`SokrVersion`), `src/ffi.rs` (registration),
+   `src/registry.rs` (registry).
 
 ---
 
