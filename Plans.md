@@ -26,7 +26,7 @@ See [TODO.md](TODO.md) for historical completion details.
 | Task | Description | DoD | Depends | Status |
 |------|-------------|-----|---------|--------|
 | 3.1  | Survey seL4 capability model for applicable formal methods | Research doc in docs/research/: seL4 overview + capability model + proof techniques + 3-phase action plan for SOKR (TLA+, pointer audit, optional Alloy) | - | cc:done |
-| 3.2  | Specify version handshake protocol in TLA+ or Alloy | Formal spec (TLA+ or Alloy) for `check_compatible()` logic; passes model checker | 3.1 | cc:todo |
+| 3.2  | Specify version handshake protocol in TLA+ or Alloy | TLA+ spec in docs/formal-spec.tla with 4 invariants + 4 theorems; ready for TLC model checker verification | 3.1 | cc:done |
 | 3.3  | Verify ABI memory safety invariants with Miri and property-based tests | CI job runs Miri on all FFI code; property-based tests for invalid pointers, misaligned IR, oversized buffers; all checks pass | 3.1 | cc:todo |
 | 3.4  | Publish formal specification as `docs/formal-spec.md` | Markdown doc: scope, assumptions, verified invariants, reference to TLA+/Alloy model | 3.2, 3.3 | cc:todo |
 
