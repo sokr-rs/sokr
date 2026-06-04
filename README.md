@@ -181,6 +181,12 @@ are complete with examples. Dispatch overhead measured at ~3 ns/call absolute
 (validation + registry lookup + indirect call) — negligible against any real substrate
 workload. Ready for third-party substrate plugins.
 
+**Toward v1.0 (formal verification).** The version-handshake protocol is specified
+in TLA+ ([`docs/formal_spec.tla`](docs/formal_spec.tla)) and machine-checked with the
+TLC model checker — every reachable state preserves the compatibility invariant, so an
+incompatible plugin can never occupy a registry slot. See
+[`docs/formal-spec-guide.md`](docs/formal-spec-guide.md) for the run command and results.
+
 See [TODO.md](TODO.md) for the roadmap and
 [ARCHITECTURE.md](ARCHITECTURE.md) for the design.
 

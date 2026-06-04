@@ -136,13 +136,12 @@ A capability is an **unforgeable reference** to a kernel object with delegable a
 
 ## Recommended 3-Phase Action Plan
 
-### Phase 1 (Weeks 1–2): TLA+ Formalization
+### Phase 1 (Weeks 1–2): TLA+ Formalization ✅ DONE
 
-**Deliverable**: `docs/formal-spec.tla` with model checker results
+**Deliverable**: `docs/formal_spec.tla` (+ `formal_spec.cfg`) with model checker
+results — completed and passing TLC 2.19 (see `docs/formal-spec-guide.md`).
 
-**Time**: 8–10 person-days
-
-**Tools**: TLA+ Toolbox (free)
+**Tools**: TLA+ / TLC (`tla2tools.jar`, free)
 
 ### Phase 2 (Weeks 3–4): Pointer Safety Audit & Miri CI
 
@@ -156,7 +155,8 @@ A capability is an **unforgeable reference** to a kernel object with delegable a
 
 ### Phase 3 (Weeks 5–7, Optional): Alloy Model of Dispatch
 
-**Deliverable**: `docs/formal-spec.als` with SAT solver results
+**Deliverable**: `docs/dispatch_model.als` with SAT solver results (underscore —
+a hyphenated filename cannot host a module)
 
 **Time**: 10–14 person-days
 
@@ -210,13 +210,17 @@ A capability is an **unforgeable reference** to a kernel object with delegable a
 
 ## Phase 3.2+ Planning Notes
 
-**Design questions to resolve during TLA+ formalization (Task 3.2)**:
+**Task 3.2 outcome**: the version handshake is now specified and machine-checked
+in [`docs/formal_spec.tla`](../formal_spec.tla) (+ `formal_spec.cfg`), passing TLC
+2.19 with all invariants holding. See [`docs/formal-spec-guide.md`](../formal-spec-guide.md).
+The artifact path question below is resolved: `docs/formal_spec.tla` (underscore —
+a hyphenated name cannot host a TLA+ module).
 
-1. **Major version 0 semantics**: SOKR is currently at v0.3.0 (major=0). The version handshake check treats major=0 the same as any major version. Confirm: should major=0 allow breaking minor bumps, or should we enforce minor-only compatibility until v1.0?
+**Open design questions still worth resolving for v1.0**:
 
-2. **Handle reuse after dispatch failure**: When `sokr_dispatch` returns `NoCapableSubstrate`, the handle is zeroed. Verify: is there a race where callers can reuse the handle before it is zeroed?
+1. **Major version 0 semantics**: SOKR is currently at v0.3.0 (major=0). The handshake treats major=0 the same as any major version (the current model fixes core major=0 and verifies the rule as written). Confirm before v1.0: should major=0 allow breaking minor bumps, or should we enforce minor-only compatibility? This is a policy choice, not a spec bug.
 
-3. **TLA+ artifact path**: The research doc recommends `docs/formal-spec.tla`. Confirm this path before Task 3.2 implementation so Task 3.4 can reference it.
+2. **Handle reuse after dispatch failure**: When `sokr_dispatch` returns `NoCapableSubstrate`, the handle is zeroed. Worth a future TLA+ extension (handle-validity contract) to confirm there is no window where a caller reuses the handle before it is zeroed.
 
 ---
 

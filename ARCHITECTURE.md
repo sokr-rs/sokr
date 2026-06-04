@@ -53,7 +53,12 @@ three-function vtable is SOKR's message-passing contract.
 **seL4** — the only formally verified capability-based microkernel.
 Lesson: sovereignty claims must eventually be provable, not just
 philosophical. seL4 is the long-term target for what formal
-verification of SOKR's core ABI contract should look like.
+verification of SOKR's core ABI contract should look like. A first,
+right-sized step exists today: the version handshake is machine-checked
+in TLA+ (`docs/formal_spec.tla`). A [survey of seL4's methods and their
+applicability to SOKR](docs/research/seL4-formal-methods-survey.md)
+explains why TLA+/Miri — not a full Isabelle/HOL refinement proof — fits
+a stateless core library.
 
 **WASI 0.1** — clean capability-based runtime before committee
 consensus introduced complexity. Lesson: the original WASI design
@@ -271,6 +276,10 @@ change to SOKR's philosophy, not just its API.
 
 4. **Version handshake is mandatory** — every plugin negotiates
    compatibility at load time. Silent ABI breaks are impossible by design.
+   This is not just an assertion: the handshake is specified in TLA+
+   (`docs/formal_spec.tla`) and machine-checked with the TLC model checker,
+   which proves the compatibility invariant holds across every reachable
+   registry state. See `docs/formal-spec-guide.md`.
 
 5. **License imposes no conditions** — MIT OR Apache-2.0. No plugin
    author needs permission from anyone to build on SOKR.

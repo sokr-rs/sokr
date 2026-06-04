@@ -198,9 +198,14 @@ and hardware that does not yet exist.
 
 **Parent tracking issue:** [#4 Pre-1.0 ABI hardening — Phase 3 dependency](https://github.com/sokr-rs/sokr/issues/4)
 
-- [ ] 🟢 Survey seL4 capability model for applicable formal methods
-- [ ] 🟢 Specify version handshake protocol in TLA+ or Alloy
-- [ ] 🟢 Verify ABI memory safety invariants with Miri and KLEE
+- [x] 🟢 Survey seL4 capability model for applicable formal methods
+      → [docs/research/seL4-formal-methods-survey.md](docs/research/seL4-formal-methods-survey.md)
+- [x] 🟢 Specify version handshake protocol in TLA+ or Alloy
+      → [docs/formal_spec.tla](docs/formal_spec.tla) (+ `formal_spec.cfg`), machine-checked
+        with TLC 2.19 (709 states, 6 invariants hold). See
+        [docs/formal-spec-guide.md](docs/formal-spec-guide.md).
+- [ ] 🟢 Verify ABI memory safety invariants with Miri and property-based tests
+      (KLEE dropped — no maintained Rust frontend; Miri covers the FFI boundary)
 - [ ] 🟢 Publish formal specification as `docs/formal-spec.md`
 
 ---

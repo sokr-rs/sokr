@@ -22,7 +22,13 @@
   correctness and security enforcement. Capability-based design.
   The gold standard reference for what a sovereignty claim should
   aspire to — not just philosophical, but mathematically provable.
-  Relevant to SOKR's long-term formal verification roadmap.
+  Relevant to SOKR's long-term formal verification roadmap. See the
+  in-repo [survey of its applicability to SOKR](research/seL4-formal-methods-survey.md).
+- **TLA+ / TLC** — https://github.com/tlaplus/tlaplus
+  Leslie Lamport's specification language and model checker. Right-sized
+  for SOKR's core: the version-handshake protocol is specified in
+  [`formal_spec.tla`](formal_spec.tla) and machine-checked with TLC. See
+  [`formal-spec-guide.md`](formal-spec-guide.md).
 
 ---
 
